@@ -1,0 +1,141 @@
+/** Construction Cost & Schedule: seed questions. See BUILD_SPEC.md in this folder before adding more. */
+import { header, input, label, note, sheet, target, title } from '../../build';
+import { categoryItems } from '../define';
+
+export const ITEMS = categoryItems('construction', [
+  {
+    id: 'construction-draws-docreview-pay-application',
+    type: 'docreview',
+    level: 1,
+    topic: 'construction-draws',
+    title: 'Review a contractor’s pay application',
+    prompt:
+      'The general contractor on a four-storey apartment building has submitted this month’s pay application (illustrative). The contract requires 5% retainage. You walked the site yesterday. Flag every line you would question before recommending payment.',
+    tags: ['pay application', 'draw request', 'retainage', 'schedule of values', 'stored materials'],
+    estMinutes: 5,
+    hints: [
+      'Compare what is billed on each line with what you saw on site and with the scheduled value.',
+      'A line cannot pass 100% of its scheduled value without a change order. Materials you cannot see need paperwork. Check the retainage percentage.',
+      'There are four problems: two trade lines, the stored materials line and the retainage line.',
+    ],
+    vars: [
+      { name: 'sitework', min: 400000, max: 700000, step: 50000 },
+      { name: 'concrete', min: 900000, max: 1500000, step: 100000 },
+      { name: 'framing', min: 1800000, max: 2600000, step: 100000 },
+      { name: 'mep', min: 2000000, max: 3000000, step: 100000 },
+      { name: 'drywall', min: 500000, max: 900000, step: 50000 },
+      { name: 'windows', min: 300000, max: 500000, step: 50000 },
+      { name: 'gencon', min: 800000, max: 1200000, step: 50000 },
+      { name: 'framing_billed', formula: '=framing*1.04' },
+      { name: 'mep_billed', formula: '=mep*0.4' },
+      { name: 'drywall_billed', formula: '=drywall*0.6' },
+      { name: 'gencon_billed', formula: '=gencon*0.55' },
+      { name: 'scheduled', formula: '=sitework+concrete+framing+mep+drywall+windows+gencon' },
+      { name: 'billed', formula: '=sitework+concrete+framing_billed+mep_billed+drywall_billed+windows+gencon_billed' },
+      { name: 'retainage', formula: '=billed*0.025' },
+    ],
+    document: {
+      kind: 'Application for payment',
+      title: 'Pay application 11: schedule of values (illustrative)',
+      columns: ['Line item', 'Scheduled value', 'Billed to date', '% billed', 'Your site walk and file notes'],
+      lines: [
+        { id: 'sitework', text: 'Sitework and utilities', cells: ['{sitework|usd}', '{sitework|usd}', '{=1|pct}', 'Complete'] },
+        { id: 'concrete', text: 'Concrete and podium', cells: ['{concrete|usd}', '{concrete|usd}', '{=1|pct}', 'Complete. Lien releases on file'] },
+        { id: 'framing', text: 'Wood framing', cells: ['{framing|usd}', '{framing_billed|usd}', '{=framing_billed/framing|pct}', 'Complete. No change orders approved on this line'] },
+        { id: 'mep', text: 'Mechanical, electrical, plumbing', cells: ['{mep|usd}', '{mep_billed|usd}', '{=mep_billed/mep|pct}', 'Rough-in under way on two of four floors'] },
+        { id: 'drywall', text: 'Drywall', cells: ['{drywall|usd}', '{drywall_billed|usd}', '{=drywall_billed/drywall|pct}', 'Board stocked on the floors. Hanging has not started'] },
+        { id: 'windows', text: 'Windows (stored off site)', cells: ['{windows|usd}', '{windows|usd}', '{=1|pct}', 'Said to be in a supplier warehouse. No bill of sale or insurance certificate in the file'] },
+        { id: 'gencon', text: 'General conditions', cells: ['{gencon|usd}', '{gencon_billed|usd}', '{=gencon_billed/gencon|pct}', '{=gencon_billed/gencon|pct} of the schedule has elapsed'] },
+        { id: 'total', text: 'Total completed and stored', heading: true, cells: ['{scheduled|usd}', '{billed|usd}', '{=billed/scheduled|pct}', ''] },
+        { id: 'retainage', text: 'Less retainage', cells: ['', '({retainage|usd})', '{=retainage/billed|pct1}', 'Contract: 5% retainage'] },
+        { id: 'net', text: 'Total earned less retainage', heading: true, cells: ['', '{=billed-retainage|usd}', '', ''] },
+      ],
+    },
+    issues: [
+      {
+        lines: ['framing'],
+        label: 'Billed {=framing_billed/framing|pct} of the scheduled value. A line cannot pass 100% without an approved change order that raises its scheduled value.',
+        category: 'concept',
+      },
+      {
+        lines: ['drywall'],
+        label: 'Billed as {=drywall_billed/drywall|pct} complete, but the board is only stocked and hanging has not started. Paying ahead of work in place (front-loading) can leave too little money to finish the job.',
+        category: 'timing',
+      },
+      {
+        lines: ['windows'],
+        label: 'Materials stored off site need proof before they are paid for: a bill of sale, insurance and the right to inspect. None is in the file.',
+        category: 'omitted',
+      },
+      {
+        lines: ['retainage'],
+        label: 'The contract requires 5% retainage, and this application holds back only {=retainage/billed|pct1}. The amount due is overstated by {=billed*0.05-retainage|usd}.',
+        category: 'arithmetic',
+      },
+    ],
+    explanation:
+      'A pay application is a claim, and the owner’s side checks it line by line against work in place. The useful questions are always the same: does the percentage match what I saw, is anything over its scheduled value, can I verify materials I cannot see, and is the retainage computed as the contract says. Lines that match the site walk (sitework, concrete, MEP, general conditions) are paid without argument.',
+  },
+  {
+    id: 'construction-changes-grid-contingency-drawdown',
+    type: 'grid',
+    level: 1,
+    topic: 'construction-changes',
+    title: 'Is the contingency being used too fast?',
+    prompt:
+      'A project in Otay Mesa is under construction (illustrative figures). Track the hard cost contingency against change orders and against progress. The burn ratio compares the share of contingency used with the share of work complete: above 1.0 means contingency is being spent faster than the building is being built.',
+    tags: ['contingency', 'change orders', 'construction budget'],
+    estMinutes: 6,
+    hints: [
+      'Contingency is a percentage of the hard cost budget. Approved change orders come out of it.',
+      'Compare like with like: contingency used against total contingency, and remaining contingency against the work still to do.',
+      'Share used = approved change orders / original contingency. Burn ratio = share used / work complete.',
+    ],
+    workbook: {
+      sheets: [
+        sheet(
+          'Contingency',
+          {
+            A1: title('Contingency drawdown'),
+            A3: label('Hard cost budget, before contingency'),
+            B3: input(24000000, 'usd', [15000000, 40000000, 500000]),
+            A4: label('Contingency (% of hard costs)'),
+            B4: input(0.05, 'pct1', [0.03, 0.1, 0.005]),
+            A5: label('Work complete'),
+            B5: input(0.45, 'pct', [0.2, 0.8, 0.05]),
+            A6: label('Approved change orders to date'),
+            B6: input(510000, 'usd', [200000, 700000, 10000]),
+            A7: label('Pending change orders'),
+            B7: input(240000, 'usd', [50000, 400000, 10000]),
+            A9: header('Tracking', 'left'),
+            A10: label('Original contingency'),
+            B10: target('=B3*B4', 'usd'),
+            A11: label('Contingency remaining'),
+            B11: target('=B10-B6', 'usd'),
+            A12: label('Share of contingency used'),
+            B12: target('=B6/B10', 'pct1'),
+            A13: label('Remaining if pending change orders are approved'),
+            B13: target('=B11-B7', 'usd'),
+            A14: label('Cost of work still to do'),
+            B14: target('=B3*(1-B5)', 'usd'),
+            A15: label('Remaining contingency as % of work still to do'),
+            B15: target('=B11/B14', 'pct1'),
+            A16: label('Burn ratio (share used / work complete)'),
+            B16: target('=B12/B5', 'num2'),
+            A18: note('Illustrative figures for teaching.'),
+          },
+          { A: 350, B: 130 },
+        ),
+      ],
+    },
+    mistakes: [
+      { label: 'Measure change orders against the contingency itself, not against the whole budget.', category: 'wrong-base', cells: { B12: '=B6/B3' } },
+      { label: 'Approved change orders have already used part of the contingency. Start from what remains.', category: 'omitted', cells: { B13: '=B10-B7' } },
+      { label: 'That is the cost of work already in place. Work still to do is budget x (1 - percent complete).', category: 'concept', cells: { B14: '=B3*B5' } },
+      { label: 'What matters is the cushion against the work still to do. Divide by remaining cost, not the original budget.', category: 'wrong-base', cells: { B15: '=B11/B3' } },
+      { label: 'The ratio is share of contingency used over share of work complete, so that above 1.0 means burning too fast.', category: 'concept', cells: { B16: '=B5/B12' } },
+    ],
+    explanation:
+      'Contingency is meant to last the whole job. If 45% of the work has used well over 45% of the contingency, the remaining work (which usually holds the surprises: finishes, inspections, closeout) is under-protected. Comparing what remains with the cost still to do, and counting pending change orders, tells you whether to ask for more equity now rather than at the end.',
+  },
+]);

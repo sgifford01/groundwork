@@ -31,6 +31,7 @@ const Attempt = z
   })
   .passthrough();
 
+// The app id stays 'pro-forma-gym' (the app's original name) so that backups made before the rename still import.
 const Backup = z.object({
   app: z.literal('pro-forma-gym'),
   version: z.number(),
@@ -54,7 +55,7 @@ export function downloadProgress(): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `pro-forma-gym-progress-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `groundwork-progress-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -67,11 +68,11 @@ export function importProgress(json: string): string {
   try {
     parsed = JSON.parse(json);
   } catch {
-    throw new Error('That file is not valid JSON. Choose a file exported from Pro Forma Gym.');
+    throw new Error('That file is not valid JSON. Choose a file exported from Groundwork.');
   }
   const result = Backup.safeParse(parsed);
   if (!result.success) {
-    throw new Error('That file does not look like a Pro Forma Gym backup.');
+    throw new Error('That file does not look like a Groundwork backup.');
   }
   const data = result.data;
   useProgress.getState().replaceAll({

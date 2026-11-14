@@ -1,0 +1,230 @@
+/** Machine-checked data for asset-management/BUILD_SPEC.md. After editing, run `npm run sync-specs`. Figures are illustrative. */
+import type { SpecData } from '../specs';
+
+export const SPEC: SpecData = {
+  examples: [
+    {
+      id: 'am-ex-variance',
+      title: 'Budget vs. actual variance, favourable or unfavourable',
+      concept:
+        'Sign convention: positive = favourable. Revenue variance = actual - budget. Expense variance = budget - actual. Variance % is measured against budget. NOI variance = revenue variance + expense variance.',
+      given: [
+        { name: 'rev_budget', label: 'Revenue, budget', value: 1326000, format: 'usd' },
+        { name: 'rev_actual', label: 'Revenue, actual', value: 1291500, format: 'usd' },
+        { name: 'exp_budget', label: 'Operating expenses, budget', value: 540000, format: 'usd' },
+        { name: 'exp_actual', label: 'Operating expenses, actual', value: 571900, format: 'usd' },
+      ],
+      steps: [
+        { name: 'rev_var', label: 'Revenue variance', formula: '=rev_actual-rev_budget', format: 'usd' },
+        { name: 'exp_var', label: 'Expense variance', formula: '=exp_budget-exp_actual', format: 'usd' },
+        { name: 'noi_var', label: 'NOI variance', formula: '=rev_var+exp_var', format: 'usd' },
+        { name: 'noi_var_pct', label: 'NOI variance % of budget NOI', formula: '=noi_var/(rev_budget-exp_budget)', format: 'pct1' },
+        { name: 'check', label: 'Check: actual NOI - budget NOI', formula: '=(rev_actual-exp_actual)-(rev_budget-exp_budget)', format: 'usd' },
+      ],
+      note: 'Both variances are unfavourable (negative). The check line equals the NOI variance, as it must.',
+    },
+    {
+      id: 'am-ex-reforecast',
+      title: 'Mid-year reforecast',
+      concept: 'A reforecast replaces the months that have happened with actuals and updates the view of the rest. Full-year forecast = year-to-date actual + remaining months at the revised run rate.',
+      given: [
+        { name: 'budget_noi', label: 'Full-year budget NOI', value: 1572000, format: 'usd' },
+        { name: 'ytd_actual', label: 'NOI, January to June actual', value: 719600, format: 'usd' },
+        { name: 'run_rate', label: 'Revised monthly NOI for July to December', value: 127000, format: 'usd' },
+        { name: 'months_left', label: 'Months remaining', value: 6, format: 'int' },
+      ],
+      steps: [
+        { name: 'forecast', label: 'Full-year reforecast', formula: '=ytd_actual+months_left*run_rate', format: 'usd' },
+        { name: 'gap', label: 'Reforecast vs. budget', formula: '=forecast-budget_noi', format: 'usd' },
+        { name: 'gap_pct', label: 'As % of budget', formula: '=gap/budget_noi', format: 'pct1' },
+      ],
+    },
+    {
+      id: 'am-ex-occupancy',
+      title: 'Physical vs. economic occupancy',
+      concept: 'Physical occupancy counts units. Economic occupancy counts money: rent collected / rent if every unit were leased at market. Concessions, loss-to-lease and bad debt open a gap between them.',
+      given: [
+        { name: 'units', label: 'Units', value: 180, format: 'int' },
+        { name: 'occupied', label: 'Occupied units', value: 171, format: 'int' },
+        { name: 'market_rent', label: 'Market rent per month', value: 2700, format: 'usd' },
+        { name: 'collected', label: 'Rent collected this month', value: 433500, format: 'usd' },
+      ],
+      steps: [
+        { name: 'physical', label: 'Physical occupancy', formula: '=occupied/units', format: 'pct1' },
+        { name: 'potential', label: 'Potential rent at market', formula: '=units*market_rent', format: 'usd' },
+        { name: 'economic', label: 'Economic occupancy', formula: '=collected/potential', format: 'pct1' },
+      ],
+    },
+    {
+      id: 'am-ex-capex-roi',
+      title: 'Return on a unit renovation',
+      concept: 'Return on cost = annual rent premium / cost per unit. Value created = premium / cap rate. A project is worth doing if the value created comfortably exceeds its cost within the hold period.',
+      given: [
+        { name: 'cost', label: 'Renovation cost per unit', value: 12000, format: 'usd' },
+        { name: 'premium', label: 'Rent premium per month', value: 175, format: 'usd' },
+        { name: 'downtime_months', label: 'Months vacant during the work', value: 1, format: 'int' },
+        { name: 'old_rent', label: 'Rent before renovation', value: 2500, format: 'usd' },
+        { name: 'cap', label: 'Cap rate', value: 0.0525, format: 'pct2' },
+      ],
+      steps: [
+        { name: 'annual_premium', label: 'Annual premium', formula: '=premium*12', format: 'usd' },
+        { name: 'all_in', label: 'All-in cost including lost rent', formula: '=cost+downtime_months*old_rent', format: 'usd' },
+        { name: 'roc', label: 'Return on all-in cost', formula: '=annual_premium/all_in', format: 'pct1' },
+        { name: 'payback', label: 'Payback (years)', formula: '=all_in/annual_premium', format: 'num1' },
+        { name: 'value_created', label: 'Value created per unit', formula: '=annual_premium/cap', format: 'usd' },
+        { name: 'profit', label: 'Value created less cost', formula: '=value_created-all_in', format: 'usd' },
+      ],
+    },
+    {
+      id: 'am-ex-renew-vs-new',
+      title: 'Renew the tenant or go to market?',
+      concept:
+        'A new lease at a higher rent is not automatically better: count vacancy, turn cost and concessions. Compare first-year net income per unit under each choice. (The rent arithmetic for commercial concessions belongs to the ARGUS category; this is the decision.)',
+      given: [
+        { name: 'renew_rent', label: 'Renewal rent per month', value: 2700, format: 'usd' },
+        { name: 'new_rent', label: 'New-lease rent per month', value: 2850, format: 'usd' },
+        { name: 'vacant_months', label: 'Months vacant if the tenant leaves', value: 1.5, format: 'num1' },
+        { name: 'turn_cost', label: 'Turn cost (paint, cleaning, repairs)', value: 1400, format: 'usd' },
+        { name: 'free_months', label: 'Concession on the new lease (months)', value: 0.5, format: 'num1' },
+      ],
+      steps: [
+        { name: 'renew_income', label: 'First-year income if renewed', formula: '=renew_rent*12', format: 'usd' },
+        { name: 'new_income', label: 'First-year income if re-leased', formula: '=new_rent*(12-vacant_months-free_months)-turn_cost', format: 'usd' },
+        { name: 'advantage', label: 'Renewal advantage in year one', formula: '=renew_income-new_income', format: 'usd' },
+        { name: 'breakeven_rent', label: 'New rent needed to break even', formula: '=(renew_income+turn_cost)/(12-vacant_months-free_months)', format: 'usd' },
+      ],
+    },
+    {
+      id: 'am-ex-hold-sell',
+      title: 'Hold or sell: the return on staying in',
+      concept:
+        'The equity at stake in a hold decision is what you would net by selling TODAY, not what was invested originally. The IRR of holding is the return on that forgone cash from future cash flows and a later sale. Sell if it is below what the money could earn elsewhere at similar risk.',
+      given: [
+        { name: 'net_today', label: 'Net sale proceeds to equity today', value: 14200000, format: 'usd' },
+        { name: 'cf_a', label: 'Cash flow, year 1 of holding', value: 760000, format: 'usd' },
+        { name: 'cf_b', label: 'Cash flow, year 2', value: 795000, format: 'usd' },
+        { name: 'cf_c', label: 'Cash flow, year 3', value: 830000, format: 'usd' },
+        { name: 'net_later', label: 'Net sale proceeds in year 3', value: 15900000, format: 'usd' },
+        { name: 'hurdle', label: 'Return available on new deals', value: 0.11, format: 'pct' },
+      ],
+      steps: [
+        { name: 'year_three_total', label: 'Year 3 cash flow plus sale', formula: '=cf_c+net_later', format: 'usd' },
+        { name: 'hold_irr', label: 'IRR of holding three more years', formula: '=IRR({-net_today,cf_a,cf_b,year_three_total})', format: 'pct1' },
+        { name: 'multiple', label: 'Multiple on today’s equity', formula: '=(cf_a+cf_b+year_three_total)/net_today', format: 'mult' },
+        { name: 'spread', label: 'Hold IRR minus the hurdle', formula: '=hold_irr-hurdle', format: 'pct1' },
+      ],
+      note: 'Using the ORIGINAL equity instead of today’s net proceeds is the classic error (sunk cost). A negative spread argues for selling; a positive one for holding.',
+    },
+    {
+      id: 'am-ex-refi-vs-sell',
+      title: 'Refinance instead of selling',
+      concept: 'A cash-out refinance returns capital without a sale: proceeds = new loan - old loan - costs. The owner keeps the asset and its risk, with more debt on it.',
+      given: [
+        { name: 'value', label: 'Current value', value: 41000000, format: 'usd' },
+        { name: 'ltv', label: 'New loan LTV', value: 0.6, format: 'pct' },
+        { name: 'old_loan', label: 'Existing loan balance', value: 19500000, format: 'usd' },
+        { name: 'costs', label: 'Refinancing costs', value: 260000, format: 'usd' },
+        { name: 'equity_invested', label: 'Equity originally invested', value: 13000000, format: 'usd' },
+      ],
+      steps: [
+        { name: 'new_loan', label: 'New loan', formula: '=value*ltv', format: 'usd' },
+        { name: 'cash_out', label: 'Cash out', formula: '=new_loan-old_loan-costs', format: 'usd' },
+        { name: 'returned', label: 'Share of original equity returned', formula: '=cash_out/equity_invested', format: 'pct1' },
+        { name: 'equity_left', label: 'Equity left in the property', formula: '=value-new_loan', format: 'usd' },
+      ],
+    },
+    {
+      id: 'am-ex-same-store',
+      title: 'Same-store NOI growth',
+      concept: 'To judge operations, compare only properties owned in both periods ("same store"). Acquisitions and sales distort a total.',
+      given: [
+        { name: 'same_prior', label: 'Same-store NOI, prior year', value: 18400000, format: 'usd' },
+        { name: 'same_now', label: 'Same-store NOI, this year', value: 19136000, format: 'usd' },
+        { name: 'acquired_now', label: 'NOI from properties bought this year', value: 2300000, format: 'usd' },
+      ],
+      steps: [
+        { name: 'same_growth', label: 'Same-store growth', formula: '=same_now/same_prior-1', format: 'pct1' },
+        { name: 'total_growth', label: 'Total NOI growth (misleading)', formula: '=(same_now+acquired_now)/same_prior-1', format: 'pct1' },
+      ],
+    },
+    {
+      id: 'am-ex-fund-leverage',
+      title: 'How fund leverage changes returns',
+      concept: 'Levered return = (unlevered return - LTV x cost of debt) / (1 - LTV). Leverage magnifies the gap between the asset return and the cost of debt, in both directions.',
+      given: [
+        { name: 'unlevered', label: 'Unlevered return', value: 0.07, format: 'pct1' },
+        { name: 'ltv', label: 'Fund LTV', value: 0.4, format: 'pct' },
+        { name: 'debt_cost', label: 'Cost of debt', value: 0.055, format: 'pct1' },
+        { name: 'bad_year', label: 'Unlevered return in a bad year', value: -0.05, format: 'pct1' },
+      ],
+      steps: [
+        { name: 'levered', label: 'Levered return', formula: '=(unlevered-ltv*debt_cost)/(1-ltv)', format: 'pct1' },
+        { name: 'levered_bad', label: 'Levered return in the bad year', formula: '=(bad_year-ltv*debt_cost)/(1-ltv)', format: 'pct1' },
+        { name: 'boost', label: 'Boost in the good year', formula: '=levered-unlevered', format: 'pct1' },
+        { name: 'drag', label: 'Extra loss in the bad year', formula: '=levered_bad-bad_year', format: 'pct1' },
+      ],
+    },
+    {
+      id: 'am-ex-gross-net',
+      title: 'Gross vs. net fund return (one-year simplification)',
+      concept:
+        'Investors receive the net return: the gross return less the management fee and the manager’s share of profit above a preferred return. This one-year version shows the mechanics; real funds compute it over the fund life.',
+      given: [
+        { name: 'capital', label: 'Investor capital', value: 100000000, format: 'usd' },
+        { name: 'gross', label: 'Gross return on capital', value: 0.13, format: 'pct1' },
+        { name: 'fee', label: 'Management fee (% of capital)', value: 0.015, format: 'pct1' },
+        { name: 'pref', label: 'Preferred return', value: 0.08, format: 'pct' },
+        { name: 'promote', label: 'Manager’s share above the pref', value: 0.2, format: 'pct' },
+      ],
+      steps: [
+        { name: 'gross_profit', label: 'Gross profit', formula: '=capital*gross', format: 'usd' },
+        { name: 'fee_amount', label: 'Management fee', formula: '=capital*fee', format: 'usd' },
+        { name: 'after_fee', label: 'Profit after the fee', formula: '=gross_profit-fee_amount', format: 'usd' },
+        { name: 'promote_amount', label: 'Promote', formula: '=MAX(0,after_fee-capital*pref)*promote', format: 'usd' },
+        { name: 'net', label: 'Net return to investors', formula: '=(after_fee-promote_amount)/capital', format: 'pct1' },
+        { name: 'drag', label: 'Gross-to-net spread', formula: '=gross-net', format: 'pct1' },
+      ],
+    },
+    {
+      id: 'am-ex-concentration',
+      title: 'Portfolio concentration',
+      concept: 'Diversification is measured by shares of value: by property type, by market, and by single asset. A portfolio whose largest position or market is a large share of the total carries concentration risk.',
+      given: [
+        { name: 'apartments', label: 'Apartments (value)', value: 420000000, format: 'usd' },
+        { name: 'office', label: 'Office', value: 150000000, format: 'usd' },
+        { name: 'retail', label: 'Retail', value: 90000000, format: 'usd' },
+        { name: 'largest_asset', label: 'Largest single asset', value: 132000000, format: 'usd' },
+        { name: 'san_diego', label: 'Value located in San Diego', value: 363000000, format: 'usd' },
+      ],
+      steps: [
+        { name: 'total', label: 'Portfolio value', formula: '=apartments+office+retail', format: 'usd' },
+        { name: 'apartment_share', label: 'Apartments share', formula: '=apartments/total', format: 'pct1' },
+        { name: 'largest_share', label: 'Largest asset share', formula: '=largest_asset/total', format: 'pct1' },
+        { name: 'market_share', label: 'San Diego share', formula: '=san_diego/total', format: 'pct1' },
+      ],
+    },
+  ],
+  typeMix: {
+    flashcard: 9,
+    mcq: 9,
+    numeric: 10,
+    estimate: 2,
+    grid: 13,
+    formula: 2,
+    errorhunt: 5,
+    predict: 3,
+    order: 2,
+    explain: 4,
+    docreview: 5,
+    judgment: 4,
+    gonogo: 1,
+    timed: 1,
+  },
+  chunks: [
+    { title: 'Chunk 0: seeds (done)', items: 2, scope: 'asset-management-budgets-grid-variance, asset-management-roles-judgment-chiller' },
+    { title: 'Chunk 1', items: 18, scope: 'asset-management-roles (6 more) and asset-management-budgets (12 more)' },
+    { title: 'Chunk 2', items: 17, scope: 'asset-management-capex (8) and asset-management-leasing (9)' },
+    { title: 'Chunk 3', items: 17, scope: 'asset-management-hold-sell (10) and asset-management-reporting (7)' },
+    { title: 'Chunk 4', items: 16, scope: 'asset-management-portfolio (9), asset-management-fund-returns (6) and the capstone asset-management-case (1); set status to built' },
+  ],
+};

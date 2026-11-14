@@ -8,7 +8,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AssistPopup, useFormulaAssist } from '../components/FormulaAssist';
 import { ALL_ITEMS } from '../content';
 import { FN_CATEGORIES, FUNCTIONS, fnByName, syntaxOf, type FnDoc, type FnExample } from '../content/functions';
-import { ITEM_TYPE_LABELS } from '../content/schema';
+import { ALL_TYPE_LABELS } from '../content/schema';
 import { formatValue, isCellError, normalizeCellInput, type CellValue, type NumFormat } from '../engine/format';
 import { colToLetter, parseA1, toA1 } from '../engine/refs';
 import { unsupportedFunctionIn, Workbook } from '../engine/workbook';
@@ -351,7 +351,7 @@ function Detail({ fn }: { fn: FnDoc }) {
           <div className="item-list">
             {practice.map((item) => (
               <Link key={item.id} className="item-row" to={`/item/${item.id}`}>
-                <span className="chip">{ITEM_TYPE_LABELS[item.type]}</span>
+                <span className="chip">{ALL_TYPE_LABELS[item.type]}</span>
                 <span>{item.title}</span>
                 <span className="state">Level {item.level}</span>
               </Link>

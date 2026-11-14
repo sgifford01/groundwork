@@ -1,7 +1,13 @@
 /**
  * Collects every question file into one list and checks each item against
  * the schema. To add a new content file, import it here and add it to RAW.
+ *
+ * ALL_ITEMS is the core Excel & Pro Forma course, exactly as before. The other
+ * categories are collected in ./categories and exposed here as CATEGORY_ITEMS;
+ * EVERY_ITEM is both together. Use itemsOfCategory(slug) for one category.
  */
+import { CATEGORY_ITEMS } from './categories';
+import { CORE_CATEGORY } from './categories/registry';
 import { ItemSchema, type Item, type ItemInput } from './schema';
 import { L0_ITEMS } from './items/l0-excel';
 import { L0_MORE } from './items/l0-more';
@@ -41,7 +47,23 @@ function parseAll(raw: ItemInput[]): Item[] {
 
 export const ALL_ITEMS: Item[] = parseAll(RAW_ITEMS);
 
-const BY_ID = new Map(ALL_ITEMS.map((i) => [i.id, i]));
+export { CATEGORY_ITEMS };
+
+/** The core course plus every other category. */
+export const EVERY_ITEM: Item[] = [...ALL_ITEMS, ...CATEGORY_ITEMS];
+
+const BY_ID = new Map(EVERY_ITEM.map((i) => [i.id, i]));
+if (BY_ID.size !== EVERY_ITEM.length) {
+  const seen = new Set<string>();
+  for (const i of EVERY_ITEM) {
+    if (seen.has(i.id)) throw new Error(`Two questions share the id "${i.id}"`);
+    seen.add(i.id);
+  }
+}
+
+export function itemsOfCategory(slug: string): Item[] {
+  return slug === CORE_CATEGORY ? ALL_ITEMS : CATEGORY_ITEMS.filter((i) => i.category === slug);
+}
 
 export function itemById(id: string): Item | undefined {
   return BY_ID.get(id);

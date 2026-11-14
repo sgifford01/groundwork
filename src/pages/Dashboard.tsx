@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalibrationChart, HBarList, MeterRow, TrendChart } from '../components/charts';
 import { ALL_ITEMS, itemById } from '../content';
@@ -20,9 +20,14 @@ function when(ts: number, now: number): string {
   return `${days} days ago`;
 }
 
-export function Dashboard() {
+const CORE_TOPICS = new Set<string>(TOPICS.map((t) => t.id));
+
+/** The core course's dashboard. `embedded` drops the page frame so it can sit inside the category page. */
+export function Dashboard({ embedded = false }: { embedded?: boolean } = {}) {
   const cards = useProgress((s) => s.cards);
-  const attempts = useProgress((s) => s.attempts);
+  const allAttempts = useProgress((s) => s.attempts);
+  // this dashboard is about the core course, so attempts from other categories are left out
+  const attempts = useMemo(() => allAttempts.filter((a) => CORE_TOPICS.has(a.topic)), [allAttempts]);
   const settings = useProgress((s) => s.settings);
   const updateSettings = useProgress((s) => s.updateSettings);
   const navigate = useNavigate();
@@ -35,7 +40,7 @@ export function Dashboard() {
   const practicedToday = attempts.some((a) => a.ts >= startOfDay(now));
   const trend = accuracyByDay(attempts, now, 14);
   const recentAccuracy = overallAccuracy(attempts.filter((a) => a.ts > now - 14 * DAY));
-  const seen = Object.values(cards).filter((c) => c.seen > 0).length;
+  const seen = ALL_ITEMS.filter((i) => (cards[i.id]?.seen ?? 0) > 0).length;
   const mistakes = mistakeCounts(attempts).slice(0, 6);
   const misses = recentMisses(attempts);
   const lastMisses = attempts.filter((a) => !a.correct && a.detail).slice(-5).reverse();
@@ -51,10 +56,10 @@ export function Dashboard() {
   }
 
   return (
-    <div className="page">
+    <div className={embedded ? '' : 'page'}>
       <div className="page-head">
         <div>
-          <h1>Dashboard</h1>
+          {embedded ? <h2>Your progress</h2> : <h1>Dashboard</h1>}
           <p>
             {due > 0
               ? `${due} review${due === 1 ? '' : 's'} due and ${fresh} new question${fresh === 1 ? '' : 's'} waiting.`

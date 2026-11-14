@@ -3,10 +3,11 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HBarList } from '../components/charts';
 import { itemById } from '../content';
-import { ITEM_TYPE_LABELS, MISTAKE_CATEGORIES, MISTAKE_LABELS, type MistakeCategory } from '../content/schema';
+import { CATEGORIES, CORE_CATEGORY } from '../content/categories/registry';
+import { ALL_TYPE_LABELS, MISTAKE_CATEGORIES, MISTAKE_LABELS, type MistakeCategory } from '../content/schema';
 import { LEVELS } from '../content/topics';
 import { startOfDay } from '../learn/sm2';
-import { isNarrowScreen, startSession } from '../learn/start';
+import { ALL_CATEGORIES, isNarrowScreen, startSession } from '../learn/start';
 import { mistakeCounts, recentMisses } from '../learn/stats';
 import { useProgress } from '../store/progress';
 
@@ -25,6 +26,8 @@ export function Mistakes() {
   const navigate = useNavigate();
   const [category, setCategory] = useState<MistakeCategory | 'all'>('all');
   const [level, setLevel] = useState<number | 'all'>('all');
+  const [area, setArea] = useState('all'); // a category slug, or 'all'
+  const areaOf = (itemId: string) => itemById(itemId)?.category ?? CORE_CATEGORY;
   const [openOnly, setOpenOnly] = useState(false);
   const now = Date.now();
 
@@ -34,10 +37,12 @@ export function Mistakes() {
   const rows = wrong.filter(
     (a) =>
       (category === 'all' || a.category === category) &&
-      (level === 'all' || a.level === level) &&
+      (area === 'all' || areaOf(a.itemId) === area) &&
+      (level === 'all' || (a.level === level && areaOf(a.itemId) === CORE_CATEGORY)) &&
       (!openOnly || stillOpen.has(a.itemId)),
   );
-  const levelsSeen = [...new Set(wrong.map((a) => a.level))].sort((a, b) => a - b);
+  const levelsSeen = [...new Set(wrong.filter((a) => areaOf(a.itemId) === CORE_CATEGORY).map((a) => a.level))].sort((a, b) => a - b);
+  const areasSeen = CATEGORIES.filter((c) => wrong.some((a) => areaOf(a.itemId) === c.slug));
 
   return (
     <div className="page">
@@ -55,7 +60,7 @@ export function Mistakes() {
           className="btn primary"
           disabled={stillOpen.size === 0}
           onClick={() => {
-            if (startSession({ minutes: 20, mode: 'mistakes', noGrids: isNarrowScreen() }) > 0) navigate('/session');
+            if (startSession({ minutes: 20, mode: 'mistakes', noGrids: isNarrowScreen(), category: ALL_CATEGORIES }) > 0) navigate('/session');
           }}
         >
           Drill my mistakes
@@ -84,8 +89,21 @@ export function Mistakes() {
                   ))}
                 </select>
               </label>
+              {areasSeen.length > 1 && (
+                <label className="field">
+                  Category
+                  <select value={area} onChange={(e) => setArea(e.target.value)}>
+                    <option value="all">All categories</option>
+                    {areasSeen.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="field">
-                Level
+                Level (core course)
                 <select value={level} onChange={(e) => setLevel(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
                   <option value="all">All levels</option>
                   {levelsSeen.map((l) => (
@@ -125,7 +143,7 @@ export function Mistakes() {
                         <td>
                           <Link to={`/item/${a.itemId}`}>{item?.title ?? a.itemId}</Link>
                           <div className="muted small">
-                            {item ? ITEM_TYPE_LABELS[item.type] : ''}
+                            {item ? ALL_TYPE_LABELS[item.type] : ''}
                             {stillOpen.has(a.itemId) ? ' · unresolved' : ' · since answered correctly'}
                           </div>
                         </td>

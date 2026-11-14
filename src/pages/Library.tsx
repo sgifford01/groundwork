@@ -2,8 +2,10 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ItemRunner } from '../components/ItemRunner';
-import { ALL_ITEMS, itemById } from '../content';
-import { ITEM_TYPE_LABELS, type Item, type ItemType } from '../content/schema';
+import { SubtopicList } from '../components/CategoryBits';
+import { ALL_ITEMS, EVERY_ITEM, itemById, itemsOfCategory } from '../content';
+import { CATEGORIES, categoryBySlug, CORE_CATEGORY } from '../content/categories/registry';
+import { ALL_TYPE_LABELS, type Item, type ItemType } from '../content/schema';
 import { LEVELS, TOPICS } from '../content/topics';
 import { newSeed } from '../engine/rng';
 import { isLevelUnlocked, levelHasContent, levelMastery, topicMastery, UNLOCK_AT } from '../learn/mastery';
@@ -33,6 +35,7 @@ export function Library() {
   const manualLevel = useProgress((s) => s.settings.manualLevel);
   const updateSettings = useProgress((s) => s.updateSettings);
   const now = Date.now();
+  const [category, setCategory] = useState(CORE_CATEGORY);
   const [type, setType] = useState<ItemType | 'all'>('all');
   const [status, setStatus] = useState<'all' | 'new' | 'due' | 'weak'>('all');
   const levels = LEVELS.filter((l) => levelHasContent(l.level, ALL_ITEMS));
@@ -48,6 +51,41 @@ export function Library() {
   };
   const visible = ALL_ITEMS.filter(shown);
 
+  const picker = (
+    <label className="field">
+      Category
+      <select value={category} onChange={(e) => setCategory(e.target.value)}>
+        {CATEGORIES.map((c) => (
+          <option key={c.slug} value={c.slug}>
+            {c.title} ({itemsOfCategory(c.slug).length})
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
+  // Every category except the core course is listed by subtopic, straight from the registry.
+  const other = category === CORE_CATEGORY ? undefined : categoryBySlug(category);
+  if (other) {
+    return (
+      <div className="page narrow">
+        <div className="page-head">
+          <div>
+            <h1>Library</h1>
+            <p>
+              {itemsOfCategory(other.slug).length} of about {other.targetItems} questions built in {other.title}.{' '}
+              <Link to={`/c/${other.slug}`}>Open the category page</Link>
+            </p>
+          </div>
+        </div>
+        <div className="filters" style={{ marginBottom: 18 }}>
+          {picker}
+        </div>
+        <SubtopicList cat={other} cards={cards} now={now} />
+      </div>
+    );
+  }
+
   return (
     <div className="page narrow">
       <div className="page-head">
@@ -60,13 +98,14 @@ export function Library() {
         </div>
       </div>
       <div className="filters" style={{ marginBottom: 18 }}>
+        {picker}
         <label className="field">
           Question type
           <select value={type} onChange={(e) => setType(e.target.value as ItemType | 'all')}>
             <option value="all">All types ({ALL_ITEMS.length})</option>
             {[...typeCounts.entries()].map(([t, n]) => (
               <option key={t} value={t}>
-                {ITEM_TYPE_LABELS[t]} ({n})
+                {ALL_TYPE_LABELS[t]} ({n})
               </option>
             ))}
           </select>
@@ -116,7 +155,7 @@ export function Library() {
                       .filter((i) => i.topic === t.id)
                       .map((item) => (
                       <Link key={item.id} className="item-row" to={`/item/${item.id}`}>
-                        <span className="chip">{ITEM_TYPE_LABELS[item.type]}</span>
+                        <span className="chip">{ALL_TYPE_LABELS[item.type]}</span>
                         <span>{item.title}</span>
                         <ItemState card={cards[item.id]} now={now} />
                       </Link>
@@ -152,14 +191,15 @@ export function ItemPage() {
     );
   }
 
-  const peers = ALL_ITEMS.filter((i) => i.topic === item.topic);
+  const peers = EVERY_ITEM.filter((i) => i.topic === item.topic);
+  const isCore = item.category === CORE_CATEGORY;
   const next = peers[peers.findIndex((i) => i.id === item.id) + 1];
 
   return (
     <div className="page">
       <div className="row" style={{ marginBottom: 16 }}>
-        <Link className="btn small" to="/library">
-          ← Library
+        <Link className="btn small" to={isCore ? '/library' : `/c/${item.category}`}>
+          ← {isCore ? 'Library' : (categoryBySlug(item.category)?.title ?? 'Category')}
         </Link>
         {next && (
           <button type="button" className="btn small ghost" onClick={() => navigate(`/item/${next.id}`)}>

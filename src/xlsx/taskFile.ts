@@ -42,7 +42,7 @@ export interface TaskFileInfo {
  */
 export async function exportTask(info: TaskFileInfo, sheets: SheetSpec[], prefill: GridAttempt = {}): Promise<ArrayBuffer> {
   const wb = await newWorkbook();
-  wb.creator = 'Pro Forma Gym';
+  wb.creator = 'Groundwork';
   wb.calcProperties.fullCalcOnLoad = true;
   // Values for the given formulas, so the file shows numbers even before Excel recalculates.
   const engine = new Workbook(buildSheetData(sheets, 'student', prefill));
@@ -160,7 +160,7 @@ export async function importTask(data: ArrayBuffer, sheets: SheetSpec[], expecte
   const fileId = tag ? String(scalarOf(tag.getCell('A2').value) ?? '') : '';
   const variant = tag ? String(scalarOf(tag.getCell('A3').value) ?? '') : '';
   if (!tag || tag.getCell('A1').value !== 'pro-forma-gym') {
-    warnings.push('This file was not downloaded from Pro Forma Gym, so it could not be matched to a task. It is being graded against this task.');
+    warnings.push('This file was not downloaded from Groundwork, so it could not be matched to a task. It is being graded against this task.');
   } else if (fileId !== expectedId) {
     const title = String(scalarOf(tag.getCell('A4').value) ?? fileId);
     throw new Error(`That file is for a different task ("${title}"). Open that task and upload it there.`);

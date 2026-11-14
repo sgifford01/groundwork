@@ -1,23 +1,26 @@
 /** Session builder: pick a length and a focus, then start. */
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ITEM_TYPE_LABELS } from '../content/schema';
+import { itemsOfCategory } from '../content';
+import { CATEGORIES, CORE_CATEGORY } from '../content/categories/registry';
+import { ALL_TYPE_LABELS } from '../content/schema';
 import { SESSION_MODES, type SessionMode } from '../learn/session';
-import { isNarrowScreen, previewSession, startSession } from '../learn/start';
+import { ALL_CATEGORIES, isNarrowScreen, previewSession, startSession } from '../learn/start';
 import { useProgress } from '../store/progress';
 
 export function Practice() {
   const navigate = useNavigate();
   const cards = useProgress((s) => s.cards);
+  const [category, setCategory] = useState(CORE_CATEGORY);
   const [minutes, setMinutes] = useState(20);
   const [mode, setMode] = useState<SessionMode>('mixed');
   const [noGrids, setNoGrids] = useState(isNarrowScreen());
 
   const preview = useMemo(
-    () => previewSession({ minutes, mode, noGrids }),
+    () => previewSession({ minutes, mode, noGrids, category }),
     // cards is listed so the preview refreshes after practice
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [minutes, mode, noGrids, cards],
+    [minutes, mode, noGrids, category, cards],
   );
   const estMinutes = Math.round(preview.reduce((s, i) => s + i.estMinutes, 0));
   const byType = new Map<string, number>();
@@ -33,6 +36,21 @@ export function Practice() {
       </div>
 
       <div className="stack">
+        <div className="card">
+          <h2>Which category?</h2>
+          <label className="field">
+            <span className="sr-only">Category</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {CATEGORIES.filter((c) => itemsOfCategory(c.slug).length > 0).map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.title} ({itemsOfCategory(c.slug).length} questions)
+                </option>
+              ))}
+              <option value={ALL_CATEGORIES}>All categories together</option>
+            </select>
+          </label>
+        </div>
+
         <div className="card">
           <h2>How long?</h2>
           <div className="seg" role="group" aria-label="Session length">
@@ -82,7 +100,7 @@ export function Practice() {
               <div className="row">
                 {[...byType.entries()].map(([type, n]) => (
                   <span className="chip" key={type}>
-                    {n} × {ITEM_TYPE_LABELS[type as keyof typeof ITEM_TYPE_LABELS]}
+                    {n} × {ALL_TYPE_LABELS[type as keyof typeof ALL_TYPE_LABELS]}
                   </span>
                 ))}
                 {preview.length === 0 && <span className="muted small">Try “Smart mix” or “New material”, or pick a question in the Library.</span>}
@@ -93,7 +111,7 @@ export function Practice() {
               className="btn primary big"
               disabled={preview.length === 0}
               onClick={() => {
-                if (startSession({ minutes, mode, noGrids }) > 0) navigate('/session');
+                if (startSession({ minutes, mode, noGrids, category }) > 0) navigate('/session');
               }}
             >
               Start session

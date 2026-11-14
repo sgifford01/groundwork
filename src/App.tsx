@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
-import { HashRouter, NavLink, Route, Routes } from 'react-router-dom';
-import { ALL_ITEMS } from './content';
+import { HashRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { CORE_CATEGORY } from './content/categories/registry';
+import { EVERY_ITEM } from './content';
 import { dueItems } from './learn/session';
-import { Dashboard } from './pages/Dashboard';
+import { CategoryPage } from './pages/CategoryPage';
+import { Home } from './pages/Home';
 import { Functions } from './pages/Functions';
 import { ItemPage, Library } from './pages/Library';
 import { Mistakes } from './pages/Mistakes';
@@ -46,18 +48,18 @@ export function App() {
   useTheme();
   const onboarded = useProgress((s) => s.settings.onboarded);
   const cards = useProgress((s) => s.cards);
-  const due = dueItems(ALL_ITEMS, cards, Date.now()).length;
+  const due = dueItems(EVERY_ITEM, cards, Date.now()).length;
 
   return (
     <HashRouter>
       <div className="app">
         <nav className="nav" aria-label="Main">
           <div className="brand">
-            <span className="brand-mark">P</span>
-            Pro Forma Gym
+            <span className="brand-mark">G</span>
+            Groundwork
           </div>
           <NavLink to="/" end>
-            <Icon d={ICONS.home} /> Dashboard
+            <Icon d={ICONS.home} /> Home
           </NavLink>
           <NavLink to="/practice">
             <Icon d={ICONS.play} /> Practice
@@ -78,11 +80,13 @@ export function App() {
           <NavLink to="/settings">
             <Icon d={ICONS.gear} /> Settings
           </NavLink>
-          <div className="nav-foot">{ALL_ITEMS.length} questions · saved on this computer</div>
+          <div className="nav-foot">{EVERY_ITEM.length} questions · saved on this computer</div>
         </nav>
         <main className="main">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/c/:slug" element={<CategoryPage />} />
+            <Route path="/dashboard" element={<Navigate to={`/c/${CORE_CATEGORY}`} replace />} />
             <Route path="/practice" element={<Practice />} />
             <Route path="/session" element={<SessionPage />} />
             <Route path="/library" element={<Library />} />
@@ -91,7 +95,7 @@ export function App() {
             <Route path="/functions/:name" element={<Functions />} />
             <Route path="/mistakes" element={<Mistakes />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Dashboard />} />
+            <Route path="*" element={<Home />} />
           </Routes>
         </main>
       </div>

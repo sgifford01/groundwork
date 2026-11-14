@@ -27,6 +27,16 @@ export interface SessionOptions {
   now: number;
   /** ids of items whose most recent attempt was wrong, newest first */
   recentMisses?: string[];
+  /** The topics new material rotates through. Defaults to the core course's topics. */
+  topics?: readonly TopicRef[];
+  /** Whether a question's level is open. Defaults to the core course's mastery gate. */
+  unlocked?: (item: Item) => boolean;
+}
+
+/** The little a session needs to know about a topic. */
+export interface TopicRef {
+  id: string;
+  level: number;
 }
 
 export function dueItems(items: Item[], cards: Cards, now: number): Item[] {
@@ -35,18 +45,26 @@ export function dueItems(items: Item[], cards: Cards, now: number): Item[] {
     .sort((a, b) => cards[a.id].due - cards[b.id].due);
 }
 
-/** Unseen items in unlocked levels, lowest level first, rotating through topics. */
-export function newItems(items: Item[], cards: Cards, manualLevel: number): Item[] {
-  const unseen = items.filter(
-    (i) => !cards[i.id]?.seen && isLevelUnlocked(i.level, manualLevel, items, cards),
-  );
+/**
+ * Unseen items in unlocked levels, lowest level first, rotating through topics.
+ * `topics` and `unlocked` default to the core course (its topic list and its
+ * 80%-mastery gate); other categories pass their own.
+ */
+export function newItems(
+  items: Item[],
+  cards: Cards,
+  manualLevel: number,
+  topics: readonly TopicRef[] = TOPICS,
+  unlocked: (item: Item) => boolean = (i) => isLevelUnlocked(i.level, manualLevel, items, cards),
+): Item[] {
+  const unseen = items.filter((i) => !cards[i.id]?.seen && unlocked(i));
   const byTopic = new Map<string, Item[]>();
-  for (const t of TOPICS) byTopic.set(t.id, []);
+  for (const t of topics) byTopic.set(t.id, []);
   for (const i of unseen) byTopic.get(i.topic)?.push(i);
   const out: Item[] = [];
   const levels = [...new Set(unseen.map((i) => i.level))].sort((a, b) => a - b);
   for (const level of levels) {
-    const queues = TOPICS.filter((t) => t.level === level).map((t) => byTopic.get(t.id) ?? []);
+    const queues = topics.filter((t) => t.level === level).map((t) => byTopic.get(t.id) ?? []);
     let added = true;
     while (added) {
       added = false;
@@ -117,7 +135,7 @@ export function interleave(items: Item[], rng: Rng): Item[] {
 export function buildSession(allItems: Item[], cards: Cards, opts: SessionOptions, rng: Rng): Item[] {
   const items = opts.noGrids ? allItems.filter((i) => !DESKTOP_ONLY_TYPES.includes(i.type)) : allItems;
   const due = dueItems(items, cards, opts.now);
-  const fresh = newItems(items, cards, opts.manualLevel);
+  const fresh = newItems(items, cards, opts.manualLevel, opts.topics, opts.unlocked);
   const weak = weakItems(items, cards);
   const missed = (opts.recentMisses ?? [])
     .map((id) => items.find((i) => i.id === id))

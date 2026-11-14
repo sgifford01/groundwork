@@ -1,8 +1,8 @@
 {
-  "name": "pro-forma-gym",
+  "name": "groundwork",
   "private": true,
   "version": "0.1.0",
-  "description": "A local practice app for Excel and real estate pro forma modeling.",
+  "description": "A local practice app for real estate development: Excel and pro forma modeling at its core, plus leases, plan reading, entitlements, market analysis, acquisitions, debt, asset management and construction.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "validate": "tsc --noEmit && vitest run"
+    "validate": "tsc --noEmit && vitest run",
+    "category-status": "node scripts/run.mjs category-status",
+    "sync-specs": "node scripts/run.mjs sync-specs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

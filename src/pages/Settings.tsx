@@ -181,7 +181,7 @@ export function Settings() {
         </div>
 
         <p className="muted small">
-          Pro Forma Gym uses HyperFormula (GPL-3.0) to evaluate formulas. That is fine for personal use; it only
+          Groundwork uses HyperFormula (GPL-3.0) to evaluate formulas. That is fine for personal use; it only
           matters if you distribute the app.
         </p>
       </div>
@@ -203,10 +203,10 @@ export function Welcome() {
   return (
     <div className="modal-back" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
       <div className="modal">
-        <h1 id="welcome-title">Welcome to Pro Forma Gym</h1>
+        <h1 id="welcome-title">Welcome to Groundwork</h1>
         <p className="muted" style={{ marginTop: 8 }}>
-          Short, mixed practice sessions for Excel and real estate modeling. Questions you miss come back soon;
-          questions you know space out.
+          Short, mixed practice sessions for real estate development, with Excel and pro forma modeling at the core.
+          Questions you miss come back soon; questions you know space out.
         </p>
         <p className="small muted">These are the answers you gave during setup. Change anything that is off.</p>
         <ProfileFields value={draft} onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} />
@@ -219,8 +219,8 @@ export function Welcome() {
           </ul>
         </div>
         <p className="small muted" style={{ marginTop: 14, marginBottom: 0 }}>
-          A short placement quiz (12 quick questions, about 10 minutes) sets your starting level more accurately than
-          the ratings above.
+          A short placement quiz (12 quick questions, about 10 minutes) sets your starting level in the Excel &amp; Pro
+          Forma course more accurately than the ratings above.
         </p>
         <div className="row" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
           <button type="button" className="btn" onClick={() => finish(false)}>

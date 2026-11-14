@@ -8,6 +8,10 @@ import { persist } from 'zustand/middleware';
 import type { ItemType, MistakeCategory } from '../content/schema';
 import { creditFor, newCard, qualityFor, review, type CardState, type Quality } from '../learn/sm2';
 
+/**
+ * The key keeps the app's original name on purpose. Renaming it would orphan every
+ * saved card and attempt. Never change it without a migration.
+ */
 export const STORAGE_KEY = 'pro-forma-gym/v1';
 const MAX_ATTEMPTS = 5000;
 

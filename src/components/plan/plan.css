@@ -1,0 +1,212 @@
+/* The plan viewer. The sheet stays paper-coloured in dark mode, like a drawing on a desk. */
+
+.plan {
+  --plan-paper: #fbfaf5;
+  --plan-ink: #1c2026;
+  --plan-pick: #1f6fd6;
+  --plan-good: #1e7d4c;
+  --plan-bad: #b93227;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+:root[data-theme='dark'] .plan {
+  --plan-paper: #e9e6dc;
+}
+
+.plan-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.plan-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.plan-tabs button {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.plan-tabs button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.plan-tabs button:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.plan-tabs button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.plan-sheet-title {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.plan-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.plan-svg {
+  display: block;
+  width: 100%;
+  height: min(62vh, 560px);
+  min-height: 320px;
+  background: #8b9098;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.plan-svg:active {
+  cursor: grabbing;
+}
+
+.plan-svg.measuring {
+  cursor: crosshair;
+}
+
+.plan-svg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.plan-paper {
+  fill: var(--plan-paper);
+}
+
+.plan-ink * {
+  stroke: var(--plan-ink);
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.plan-ink .pen-none {
+  stroke: none;
+}
+
+.plan-ink .pen-dash {
+  stroke-dasharray: 1.2 0.8;
+}
+
+.plan-ink .pen-center {
+  stroke-dasharray: 3 0.6 0.5 0.6;
+}
+
+.plan-ink .fill-none {
+  fill: none;
+}
+
+.plan-ink .fill-paper {
+  fill: var(--plan-paper);
+}
+
+.plan-ink .fill-solid {
+  fill: var(--plan-ink);
+}
+
+.plan-ink .fill-tint {
+  fill: #d9d6cc;
+}
+
+.plan-ink .plan-text {
+  fill: var(--plan-ink);
+  stroke: none;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.plan-hit {
+  fill: transparent;
+  stroke: transparent;
+  outline: none;
+}
+
+.plan-svg.picking .plan-hit,
+.plan-hit.link {
+  cursor: pointer;
+}
+
+.plan-svg.measuring .plan-hit {
+  cursor: crosshair;
+}
+
+.plan-svg.picking .plan-hit:hover,
+.plan-hit.link:hover {
+  fill: rgba(31, 111, 214, 0.1);
+  stroke: var(--plan-pick);
+}
+
+.plan-hit:focus-visible {
+  stroke: var(--plan-pick);
+  fill: rgba(31, 111, 214, 0.14);
+}
+
+.plan-hit.hl {
+  stroke: #c98500;
+  fill: rgba(201, 133, 0, 0.18);
+}
+
+.plan-hit.sel {
+  stroke: var(--plan-pick);
+  fill: rgba(31, 111, 214, 0.22);
+}
+
+.plan-hit.good {
+  stroke: var(--plan-good);
+  fill: rgba(30, 125, 76, 0.22);
+}
+
+.plan-hit.bad {
+  stroke: var(--plan-bad);
+  fill: rgba(185, 50, 39, 0.22);
+}
+
+.plan-measure line {
+  stroke: #d6336c;
+}
+
+.plan-measure circle {
+  fill: #d6336c;
+}
+
+.plan-measure text {
+  fill: #a31d4d;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  paint-order: stroke;
+  stroke: var(--plan-paper);
+  stroke-width: 0.6;
+}
+
+.plan-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}

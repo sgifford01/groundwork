@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ItemRunner } from '../components/ItemRunner';
 import { itemById } from '../content';
-import { ITEM_TYPE_LABELS } from '../content/schema';
+import { ALL_TYPE_LABELS } from '../content/schema';
 import { LEVELS } from '../content/topics';
 import { newSeed } from '../engine/rng';
 import { PASS_SHARE, placementOutcome } from '../learn/placement';
@@ -160,7 +160,7 @@ export function SessionPage() {
                         <td>
                           <Link to={`/item/${r.itemId}`}>{it?.title ?? r.itemId}</Link>
                         </td>
-                        <td>{it ? ITEM_TYPE_LABELS[it.type] : ''}</td>
+                        <td>{it ? ALL_TYPE_LABELS[it.type] : ''}</td>
                         <td className="num">{Math.round(r.score * 100)}%</td>
                         <td>{r.nextDue}</td>
                       </tr>

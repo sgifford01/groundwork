@@ -10,7 +10,11 @@
  */
 import { z } from 'zod';
 import { NUM_FORMATS } from '../engine/format';
+import { CATEGORY_SLUGS, CATEGORY_TOPICS, CORE_CATEGORY } from './categories/registry';
 import { TOPIC_IDS } from './topics';
+
+/** Topics of the core course plus the subtopics of every other category. */
+const KNOWN_TOPICS = new Set<string>([...TOPIC_IDS, ...CATEGORY_TOPICS.map((t) => t.id)]);
 
 // ---- shared pieces --------------------------------------------------------
 
@@ -143,7 +147,19 @@ const base = {
   /** Unique, lowercase-with-dashes. Never change an id after release: progress is stored by id. */
   id: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
   level: z.number().int().min(0).max(6),
-  topic: z.enum(TOPIC_IDS),
+  /** A topic id from topics.ts (core course) or a subtopic id from categories/registry.ts. */
+  topic: z.string().refine((t) => KNOWN_TOPICS.has(t), 'unknown topic id'),
+  /** Which category the question belongs to. Left out = the core Excel & Pro Forma course. */
+  category: z.enum(CATEGORY_SLUGS).default(CORE_CATEGORY),
+  /** For rules that change (laws, fees, programs): the date the fact was checked, as YYYY-MM-DD. */
+  verifiedAsOf: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'use YYYY-MM-DD')
+    .optional(),
+  /** The official source the fact was checked against. */
+  sourceUrl: z.string().url().optional(),
+  /** In a category that needs legal verification: this question states no real-world rule (pure math on a hypothetical). */
+  noLegalClaim: z.boolean().optional(),
   /** Short name shown in lists. */
   title: z.string().min(3),
   /** The question. May use {variable} and {=formula|format} placeholders. */
@@ -463,6 +479,147 @@ const Shortcut = z
   })
   .strict();
 
+
+// ============================================================================
+// Question types added for the non-Excel categories. The core course does not
+// use them (its 14 types and their labels below are unchanged).
+// ============================================================================
+
+// ---- scenario judgment: pick the best response; every option is explained ----
+
+const Judgment = z
+  .object({
+    ...base,
+    type: z.literal('judgment'),
+    vars: z.array(Variable).default([]),
+    /** Exactly one option is rated 'best' (full credit). 'acceptable' earns half, 'poor' none. */
+    options: z
+      .array(
+        z
+          .object({
+            text: z.string().min(3),
+            rating: z.enum(['best', 'acceptable', 'poor']),
+            /** Why this response is rated the way it is. Shown for every option after grading. */
+            why: z.string().min(3),
+            category: Category.optional(),
+          })
+          .strict(),
+      )
+      .min(3)
+      .max(5),
+    explanation: z.string().min(3),
+  })
+  .strict();
+
+// ---- document review: flag the lines of a document that contain a problem ----
+
+const DocLine = z
+  .object({
+    id: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+    /** The line, or its first column when the document is a table. May use {templates}. */
+    text: z.string().min(1),
+    /** Remaining columns when the document has `columns`. May use {templates}. */
+    cells: z.array(z.string()).optional(),
+    /** A heading or total: shown, but cannot be flagged. */
+    heading: z.boolean().optional(),
+  })
+  .strict();
+
+const DocReview = z
+  .object({
+    ...base,
+    type: z.literal('docreview'),
+    vars: z.array(Variable).default([]),
+    document: z
+      .object({
+        /** e.g. "Trailing-12 operating statement" */
+        kind: z.string().min(3),
+        title: z.string().min(3),
+        /** Column headings, first column included. Leave out for a document of paragraphs or clauses. */
+        columns: z.array(z.string()).optional(),
+        lines: z.array(DocLine).min(4).max(40),
+      })
+      .strict(),
+    /** The problems. Flagging any one of an issue's lines finds it. Lines must not be shared between issues. */
+    issues: z
+      .array(
+        z
+          .object({
+            lines: z.array(z.string()).min(1),
+            /** What is wrong and what to do about it. May use {templates}. */
+            label: z.string().min(3),
+            category: Category,
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(5),
+    explanation: z.string().min(3),
+  })
+  .strict();
+
+// ---- plan reading: answer by clicking, measuring or reading a generated drawing ----
+
+/** A key that matches a plan element by its exact id ("unit-203") or by its role ("stair"). */
+const ElementKey = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+
+const PlanTask = z.discriminatedUnion('kind', [
+  // click the right thing on the drawing
+  z
+    .object({
+      kind: z.literal('locate'),
+      /** Any element matching one of these keys is correct. */
+      targets: z.array(ElementKey).min(1),
+      /** Tempting wrong clicks, each with its own feedback. */
+      decoys: z.array(z.object({ match: ElementKey, why: z.string().min(3), category: Category }).strict()).default([]),
+    })
+    .strict(),
+  // read, measure or compute a number from the drawing; the key is a formula over the plan's facts
+  z
+    .object({
+      kind: z.literal('measure'),
+      answer: Formula,
+      format: Format,
+      unit: z.string().optional(),
+      tolerance: Tolerance.default({ pct: 0.02 }),
+      /** The ruler: real-world feet, inches on paper (the student applies the scale), or none. */
+      tool: z.enum(['real', 'paper', 'none']).default('real'),
+      mistakes: z.array(NumericMistake).min(1),
+    })
+    .strict(),
+  // name the highlighted element or symbol
+  z
+    .object({
+      kind: z.literal('identify'),
+      highlight: ElementKey,
+      correct: z.string().min(1),
+      distractors: z
+        .array(z.object({ text: z.string().min(1), why: z.string().min(3), category: Category }).strict())
+        .min(2)
+        .max(4),
+    })
+    .strict(),
+]);
+
+const PlanItem = z
+  .object({
+    ...base,
+    type: z.literal('plan'),
+    plan: z
+      .object({
+        /** A plan set id from src/plans/sets.ts. */
+        set: z.string().min(1),
+        /** Parameter sets for the generator. One is chosen per attempt, so the drawing and the answer change. */
+        variants: z.array(z.record(z.string(), z.number())).min(1),
+        /** The sheet shown first, e.g. "A-201". */
+        sheet: z.string().min(1),
+      })
+      .strict(),
+    task: PlanTask,
+    explanation: z.string().min(3),
+  })
+  .strict();
+
 export const ItemSchema = z.discriminatedUnion('type', [
   Flashcard,
   Mcq,
@@ -478,6 +635,9 @@ export const ItemSchema = z.discriminatedUnion('type', [
   Explain,
   GoNoGo,
   Shortcut,
+  Judgment,
+  DocReview,
+  PlanItem,
 ]);
 
 export type Item = z.infer<typeof ItemSchema>;
@@ -499,6 +659,9 @@ export type OrderItem = Extract<Item, { type: 'order' }>;
 export type ExplainItem = Extract<Item, { type: 'explain' }>;
 export type GoNoGoItem = Extract<Item, { type: 'gonogo' }>;
 export type ShortcutItem = Extract<Item, { type: 'shortcut' }>;
+export type JudgmentItem = Extract<Item, { type: 'judgment' }>;
+export type DocReviewItem = Extract<Item, { type: 'docreview' }>;
+export type PlanQItem = Extract<Item, { type: 'plan' }>;
 export type GridMistakeSpec = z.infer<typeof GridMistake>;
 export type BugSpec = z.infer<typeof Bug>;
 
@@ -508,7 +671,12 @@ export const SHEET_GRADED_TYPES: ItemType[] = ['grid', 'formula', 'case', 'timed
 /** Item types that contain a workbook at all. */
 export const WORKBOOK_TYPES: ItemType[] = ['grid', 'formula', 'case', 'timed', 'errorhunt', 'predict'];
 
-export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
+/** The three types used only outside the core course. */
+export type CategoryOnlyType = 'judgment' | 'docreview' | 'plan';
+export type CoreItemType = Exclude<ItemType, CategoryOnlyType>;
+
+/** The core course's 14 types. */
+export const ITEM_TYPE_LABELS: Record<CoreItemType, string> = {
   flashcard: 'Flashcard',
   mcq: 'Multiple choice',
   numeric: 'Calculation',
@@ -525,5 +693,13 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   shortcut: 'Shortcut drill',
 };
 
-/** Types that show a spreadsheet or need a real keyboard, so they are left out of phone-friendly sessions. */
-export const DESKTOP_ONLY_TYPES: ItemType[] = ['grid', 'errorhunt', 'case', 'timed', 'shortcut', 'formula', 'predict'];
+/** Every type, core and category-only. Use this one for display. */
+export const ALL_TYPE_LABELS: Record<ItemType, string> = {
+  ...ITEM_TYPE_LABELS,
+  judgment: 'Scenario judgment',
+  docreview: 'Document review',
+  plan: 'Plan reading',
+};
+
+/** Types that show a spreadsheet or drawing, or need a real keyboard, so they are left out of phone-friendly sessions. */
+export const DESKTOP_ONLY_TYPES: ItemType[] = ['grid', 'errorhunt', 'case', 'timed', 'shortcut', 'formula', 'predict', 'plan'];

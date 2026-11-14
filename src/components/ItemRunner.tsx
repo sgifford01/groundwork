@@ -3,11 +3,14 @@
  * (spaced-repetition card + attempt log), then offers "Next".
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ITEM_TYPE_LABELS, type Item, type ItemType } from '../content/schema';
-import { LEVELS, topicName } from '../content/topics';
+import { ALL_TYPE_LABELS, type Item, type ItemType } from '../content/schema';
+import { CATEGORY_LEVELS, categoryBySlug, CORE_CATEGORY } from '../content/categories/registry';
+import { LEVELS } from '../content/topics';
+import { topicLabel } from '../learn/category';
 import { describeInterval, type CardState } from '../learn/sm2';
 import { useProgress } from '../store/progress';
 import type { Outcome } from './questions/common';
+import { DocReviewQuestion, JudgmentQuestion, PlanQuestion } from './questions/CategoryQuestions';
 import { GridQuestion } from './questions/GridQuestion';
 import {
   EstimateQuestion,
@@ -21,7 +24,7 @@ import { CaseQuestion, ErrorHuntQuestion, FormulaQuestion } from './questions/Sh
 import { FlashcardQuestion, McqQuestion, NumericQuestion } from './questions/SimpleQuestions';
 
 /** Types where the keyboard should stay with the sheet or text box after grading. */
-const KEEP_FOCUS: ItemType[] = ['grid', 'timed', 'errorhunt', 'case', 'formula'];
+const KEEP_FOCUS: ItemType[] = ['grid', 'timed', 'errorhunt', 'case', 'formula', 'plan', 'docreview'];
 
 export interface RunnerResult {
   itemId: string;
@@ -91,17 +94,18 @@ export function ItemRunner({
   }, [done, item.type]);
 
   const graded = done !== null;
-  const level = LEVELS.find((l) => l.level === item.level);
+  const isCore = item.category === CORE_CATEGORY;
+  const levelName = isCore ? LEVELS.find((l) => l.level === item.level)?.name : CATEGORY_LEVELS[item.level];
 
   return (
     <div className="q">
       <div className="q-head">
-        <span className="chip accent">L{item.level}</span>
-        <span className="chip">{topicName(item.topic)}</span>
-        <span className="chip">{ITEM_TYPE_LABELS[item.type]}</span>
+        <span className="chip accent">{isCore ? `L${item.level}` : (categoryBySlug(item.category)?.title ?? item.category)}</span>
+        <span className="chip">{topicLabel(item.topic)}</span>
+        <span className="chip">{ALL_TYPE_LABELS[item.type]}</span>
         <span className="q-title">{item.title}</span>
         <span className="muted small" style={{ marginLeft: 'auto' }}>
-          {level?.name}
+          {levelName}
         </span>
       </div>
 
@@ -118,6 +122,19 @@ export function ItemRunner({
       {item.type === 'explain' && <ExplainQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
       {item.type === 'gonogo' && <GoNoGoQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
       {item.type === 'shortcut' && <ShortcutQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
+      {item.type === 'judgment' && <JudgmentQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
+      {item.type === 'docreview' && <DocReviewQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
+      {item.type === 'plan' && <PlanQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
+
+      {item.verifiedAsOf && item.sourceUrl && (
+        <div className="q-source">
+          Rule checked on {item.verifiedAsOf} against{' '}
+          <a href={item.sourceUrl} target="_blank" rel="noreferrer">
+            this official source
+          </a>
+          . Laws and fees change, so confirm before relying on it.
+        </div>
+      )}
 
       <div className="q-foot">
         <span className="muted small">

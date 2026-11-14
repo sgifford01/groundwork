@@ -1,6 +1,42 @@
-# Pro Forma Gym: guide for Claude Code sessions
+# Groundwork: guide for Claude Code sessions
 
-A local Vite + React + TypeScript app that teaches Excel and real estate pro forma modeling with spaced repetition and self-grading spreadsheet tasks. The owner is a real estate student, not a developer: explain changes in plain English and always finish by running `npm run validate`.
+A local Vite + React + TypeScript app that teaches real estate development with spaced repetition and self-grading tasks. It began as "Pro Forma Gym", an Excel and pro forma trainer; that course is now the **core category** of a larger app with eight more categories. (The folder, the localStorage key and the backup file id still say `pro-forma-gym` on purpose.)
+
+The owner is a real estate student, not a developer: explain changes in plain English and always finish by running `npm run validate`.
+
+## READ THIS FIRST: the Excel & Pro Forma section is protected
+
+The Excel & Pro Forma course (Levels 0 to 5, three capstones, the grid, the grader, its 204 questions) is finished and is the main section of the app. When working on anything else:
+
+- **Do not edit `src/content/items/` or `src/content/topics.ts`.** No content edits, removals or restructuring.
+- **Do not edit the tests that existed before the category system** (`content`, `coverage`, `grader`, `engine`, `learn`, `xlsx`, `functions`, `finance`). They must pass exactly as written.
+- `ALL_ITEMS` means the core course. `ITEM_TYPE_LABELS` is its 14 types. Keep both that way.
+- Shared code may be extended only additively (new optional fields and functions). If an existing test fails, the change is wrong.
+- **Never risk saved progress.** It is stored under `pro-forma-gym/v1`, keyed by question id. Do not rename the key, change the stored shape without a migration, or change an existing id. If a change could affect saved progress, stop and ask the owner.
+
+Changes to the core course itself happen only when the owner asks for them explicitly.
+
+## The category system
+
+Every topic is a standalone category, listed in **`src/content/categories/registry.ts`** (slug, title, tier, status, hover summary and bullets, objectives, subtopics with target counts, `needsLegalVerification`, recommended build model). The home screen tiles, hover cards, landing pages (`/#/c/<slug>`), per-category review queues, the Library picker and `npm run category-status` are all generated from it. A new category needs a registry entry and a folder; no per-category code.
+
+| Category | Slug | Tier | Build with |
+|---|---|---|---|
+| Excel & Pro Forma Modeling | `excel-proforma` | CORE | built |
+| Commercial Leases & ARGUS | `argus` | BIG (70) | Fable 5.2 high |
+| Plan Reading & Building Program | `plan-reading` | BIG (70) | Fable 5.2 high |
+| Entitlements & Zoning | `entitlements` | MEDIUM (40), legal verification | Opus 5.5 high |
+| Market Analysis | `market-analysis` | BIG (70) | Opus 5.5 high |
+| Acquisitions & Closing | `acquisitions` | BIG (70) | Opus 5.5 high |
+| Debt & Capital Markets | `capital-markets` | MEDIUM (40) | Opus 5.5 medium |
+| Asset & Portfolio Management | `asset-management` | BIG (70) | Opus 5.5 high |
+| Construction Cost & Schedule | `construction` | SMALL (24) | Opus 5.5 medium |
+
+**To build a category, follow `docs/BUILDING_CATEGORIES.md`** and the category's **`src/content/categories/<slug>/BUILD_SPEC.md`** (16 sections; a ready-to-paste BUILD PROMPT is at the bottom). Each folder also holds `spec-data.ts` (worked examples, type mix and chunk plan as data: run `npm run sync-specs` after editing it or the registry) and `items.ts` (two seed questions that set the quality bar). New questions go in `items-<subtopic>.ts` files, which are picked up automatically.
+
+Category questions use the same schema as the core, plus: `category` (stamped by `categoryItems('<slug>', [...])`), `verifiedAsOf` + `sourceUrl` for any real-world rule, `noLegalClaim` for hypothetical arithmetic in a category that needs verification, and three extra types: `judgment`, `docreview`, `plan`. Ids start with the slug; `topic` is a subtopic id; `level` is 1 (Foundations), 2 (Applied) or 3 (Case). Categories are not level-gated. Each concept is owned by one category (section 12 of each spec); new categories may overlap the Excel course but not each other.
+
+**No law, fee, tax rate or market level is written from memory.** Verify at the primary source, date it and cite it, or make it an explicit hypothetical.
 
 ## Commands
 
@@ -10,6 +46,8 @@ A local Vite + React + TypeScript app that teaches Excel and real estate pro for
 | `npm run validate` | Type-check, then run every test. **Run this after any content or code change.** |
 | `npm test` | Tests only |
 | `npm run build` | Production build |
+| `npm run category-status` | Each category's tier, status and built vs. target question counts |
+| `npm run sync-specs` | Re-render the generated blocks of every BUILD_SPEC.md (after editing the registry or a `spec-data.ts`) |
 
 Node lives at `/usr/local/bin`; if `npm` is not found in a tool shell, prefix commands with `PATH=/usr/local/bin:$PATH`.
 
@@ -22,27 +60,40 @@ src/
                formulaAssist.ts (which suggestions / argument template to show while typing)
   grading/     gridGrader.ts (sheet grading), simple.ts (numeric + multiple choice),
                advanced.ts (error hunt, guided case, predict, estimate, ordering, go/no-go, shortcuts)
-  content/     schema.ts (THE question schema), topics.ts (levels + topics), build.ts (helpers),
-               functions.ts (THE function catalog), items/*.ts (the questions), index.ts (collects and validates them)
-  learn/       sm2.ts (spaced repetition), mastery.ts, session.ts (session builder), placement.ts, stats.ts
+               category.ts (scenario judgment, document review, plan reading)
+  content/     schema.ts (THE question schema), topics.ts (core levels + topics), build.ts (helpers),
+               functions.ts (THE function catalog), items/*.ts (the CORE questions: protected),
+               index.ts (ALL_ITEMS = core; CATEGORY_ITEMS; EVERY_ITEM; itemsOfCategory)
+               categories/registry.ts (THE category list), categories/index.ts (collects items*.ts automatically),
+               categories/specs.ts (spec rendering), categories/<slug>/{BUILD_SPEC.md, spec-data.ts, items*.ts}
+  plans/       generated drawings: model.ts, draw.ts (symbols), mfDoubleLoaded.ts (first plan set), sets.ts
+  learn/       sm2.ts (spaced repetition), mastery.ts, session.ts (session builder), placement.ts, stats.ts,
+               category.ts (per-category progress, due everywhere, status rows), start.ts (starts sessions; `category` option)
   store/       progress.ts (localStorage), backup.ts (export/import), session.ts
   xlsx/        taskFile.ts (write a task as .xlsx, read a completed one back)
   components/  grid/Grid.tsx (the spreadsheet), questions/* (one component per type), ItemRunner.tsx, charts.tsx,
                FormulaAssist.tsx (the as-you-type help popup, shared by the grid, the formula box and the guide)
-  pages/       Dashboard, Practice, SessionPage, Library, Functions, Mistakes, Settings
-tests/         content, grader, finance (+ finance.ts), engine, learn, xlsx, coverage, functions
+               plan/PlanViewer.tsx (pan, zoom, measure, hotspots), questions/CategoryQuestions.tsx, CategoryBits.tsx
+  pages/       Home (category tiles), CategoryPage (landing page; shows Dashboard for the core), Dashboard (core),
+               Practice, SessionPage, Library, Functions, Mistakes, Settings
+scripts/       run.mjs (runs a TS script through Vite), category-status.ts, sync-specs.ts
+docs/          BUILDING_CATEGORIES.md (the builder workflow, checklist and common mistakes)
+tests/         PROTECTED: content, grader, finance (+ finance.ts), engine, learn, xlsx, coverage, functions
+               category system: category-content (every category question), categories (registry, specs, sessions), plans
 ```
 
-## Non-negotiable content rules
+## Non-negotiable content rules (core and categories)
 
 1. **Never type an answer by hand.** Numeric answers, options and sheet solutions are formulas evaluated by the engine. Derived prompt numbers are formula variables (`{ name: 'loan', formula: '=price*ltv' }`).
 2. **Never string-match formulas.** Grading is by behaviour: values, a hardcode check, and a perturbation test. Any formula that produces the right results must pass.
 3. **Never change an item's `id` after it exists.** Progress is stored by id. To retire an item, delete it.
 4. **Every item needs real common mistakes**, expressed as formulas where the type allows. The tests enter each one and require that it is graded wrong and labelled correctly.
 5. **Run `npm run validate` and fix every failure** before saying content is done. Do not weaken a test to make content pass.
-6. **Keep the coverage rules true** (tests/coverage.test.ts): at least 150 items, all 14 types in use, and every topic in Levels 0 to 5 has at least one `grid` and one `errorhunt`.
+6. **Keep the coverage rules true** (tests/coverage.test.ts): at least 150 core items, all 14 core types in use, and every core topic in Levels 0 to 5 has at least one `grid` and one `errorhunt`.
 
-## Adding questions
+## Adding questions to the core course (only when the owner asks)
+
+For the other categories, follow `docs/BUILDING_CATEGORIES.md` instead.
 
 1. Pick the topic id from `src/content/topics.ts` (add a topic there only if none fits; a new topic needs a grid build and an error hunt).
 2. Add the item to the matching file in `src/content/items/` (or create a file and register it in `src/content/index.ts`).
@@ -140,6 +191,16 @@ To add a function: add an entry with `name`, `category`, `summary`, `detail`, `a
 - **`estMinutes`:** flashcard 0.5, mcq 1 to 2, numeric / estimate / formula 1 to 3, order 1 to 1.5, explain 3, grid 3 to 10, error hunt 4 to 6, case 10 to 18, timed = minutes + 1.
 - No em dashes in question text (a test enforces it). The content uses British spelling ("colour", "annualise").
 
+### The three category-only types
+
+| Type | Key fields | Notes |
+|---|---|---|
+| `judgment` | `options[{ text, rating, why, category? }]` (3 to 5), `explanation`, optional `vars` | Exactly one `best` (1.0); `acceptable` scores 0.5; `poor` 0. Every `why` is shown after grading. |
+| `docreview` | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]`, `vars` | Score = (issues found - wrong flags) / issues. At least as many clean flaggable lines as issues. Text takes `{templates}`. |
+| `plan` | `plan { set, variants, sheet }`, `task` (`locate` / `measure` / `identify`), `explanation` | Answers are formulas over the plan's `facts`. Every variant must be inside the plan set's limits. Text takes `{fact_name|format}`. |
+
+Grading for these is in `grading/category.ts`; they are in `ALL_TYPE_LABELS` (use that map for display) and never in `ITEM_TYPE_LABELS`.
+
 ## Engine facts (HyperFormula 3.x, wrapped in `engine/workbook.ts`)
 
 - Supported and cross-checked in tests: PMT, IPMT, PPMT, PV, FV, NPV, IRR, XNPV, XIRR, plus XLOOKUP, INDEX/MATCH, VLOOKUP, SUMIFS, COUNTIF, SUMPRODUCT, CHOOSE, EDATE, EOMONTH, IFERROR, ROUND/ROUNDUP, MIN/MAX.
@@ -167,15 +228,22 @@ To add a function: add an entry with `name`, `category`, `summary`, `detail`, `a
 - Mastery per topic is the average over all its items, unseen items counting as 0. A level unlocks at 80% mastery of the levels before it, or via `settings.manualLevel` (set by the placement quiz or by hand).
 - Sessions (`learn/session.ts`) fill a time box and interleave topics and types. `DESKTOP_ONLY_TYPES` in schema.ts lists what "cards and quick questions only" leaves out.
 - All progress is one localStorage key, `pro-forma-gym/v1` (`store/progress.ts`). If the stored shape changes, bump the persist `version` and add a migration; never silently drop a user's progress.
+- Categories: every category has its own review queue (`dueItems(itemsOfCategory(slug), ...)`) and mastery (`categoryStats`). `startSession({ ..., category })` takes a slug or `'all'`; left out it means the core course. "Mixed review" on the home screen is a due-only session across `'all'`. Only the core course is level-gated.
 
 ## Adding a new question type
 
-Extend the union in `content/schema.ts` (and `ITEM_TYPE_LABELS`), add grading in `grading/`, add a component in `components/questions/`, route it in `ItemRunner.tsx`, decide whether it belongs in `DESKTOP_ONLY_TYPES` and in the placement quiz's quick types, and add tests in `tests/content.test.ts` (plus `tests/grader.test.ts` and `tests/xlsx.test.ts` if it uses a sheet).
+A type for a category goes in `ALL_TYPE_LABELS` (never `ITEM_TYPE_LABELS`, which is the core's 14) and gets its checks in `tests/category-content.test.ts`. Otherwise the steps are the same:
+
+Extend the union in `content/schema.ts` (and the label map), add grading in `grading/`, add a component in `components/questions/`, route it in `ItemRunner.tsx`, decide whether it belongs in `DESKTOP_ONLY_TYPES` and in the placement quiz's quick types, and add tests in `tests/content.test.ts` (plus `tests/grader.test.ts` and `tests/xlsx.test.ts` if it uses a sheet).
 
 ## Status
 
-Built: all 14 question types; the grid with full grading and Excel-style function help while typing; .xlsx download and upload; the Functions guide (44 functions); SM-2, confidence and the hint ladder; mastery and unlocks; placement quiz; session builder; dashboard with calibration; mistake journal; export/import; 204 items across Levels 0 to 5 and three capstones (19 of them generated function flashcards).
+**Core course (built):** all 14 question types; the grid with full grading and Excel-style function help while typing; .xlsx download and upload; the Functions guide (44 functions); SM-2, confidence and the hint ladder; mastery and unlocks; placement quiz; session builder; dashboard with calibration; mistake journal; export/import; 204 items across Levels 0 to 5 and three capstones (19 of them generated function flashcards).
 
 Multi-sheet tasks work (sheet tabs, green cross-sheet links, `sheet:` on a mistake, `Sheet!B7` keys in edge cases); `l5-present-grid-summary-page` is the one example so far. Put the sheet with the yellow cells first. Pointing at a cell on another tab with the mouse is not supported: cross-sheet references are typed.
 
-Ideas not built: more multi-sheet tasks; AVERAGEIFS and XMATCH support; a monthly IRR-hurdle waterfall with several tiers; more capstones (student housing near UCSD, retail, industrial).
+**Category system (built 2026-11-14):** registry; home screen tiles with hover cards; landing pages; per-category review and mastery; mixed review; the `judgment`, `docreview` and `plan` types; a minimal plan viewer with one plan set (`mf-double-loaded`: cover, floor plan, enlarged unit plan); a BUILD_SPEC and two seed questions for each of the eight new categories (16 seeds); builder docs; `category-status` and `sync-specs`.
+
+**Not built yet:** the full content of the eight categories (438 questions to go). Run `npm run category-status` for the current counts, and keep each category's `status` in the registry up to date (`planned` → `in-progress` → `built`).
+
+Ideas for the core course, not built: more multi-sheet tasks; AVERAGEIFS and XMATCH support; a monthly IRR-hurdle waterfall with several tiers; more capstones (student housing near UCSD, retail).

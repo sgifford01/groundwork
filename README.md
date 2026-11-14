@@ -1,10 +1,13 @@
-# Pro Forma Gym
+# Groundwork
 
-A practice app for Excel and real estate pro forma modeling. It runs on your own computer, in your web browser. Nothing is uploaded anywhere.
+A practice app for real estate development. It runs on your own computer, in your web browser. Nothing is uploaded anywhere. (It was first built as "Pro Forma Gym"; the folder still has that name, and that is fine.)
 
-You answer short, mixed questions. Ones you miss come back within minutes; ones you know come back days later. Spreadsheet tasks are graded cell by cell, and only real formulas pass.
+At its core is the **Excel & Pro Forma Modeling** course: short, mixed questions and spreadsheet tasks graded cell by cell, where only real formulas pass. Around it are eight more categories that are being built out one at a time.
 
-**204 questions · 14 question types · 6 levels plus 3 capstone case studies · a guide to 44 Excel functions.**
+You answer short, mixed questions. Ones you miss come back within minutes; ones you know come back days later.
+
+**Core course: 204 questions · 14 question types · 6 levels plus 3 capstone case studies · a guide to 44 Excel functions.**
+**Eight more categories: specified in full, with two sample questions each ready to try (16 in all).**
 
 ---
 
@@ -32,7 +35,7 @@ Your progress is saved in the browser you use. Use the same browser each time, o
 
 ## A 2-week practice plan (20 to 30 minutes a day)
 
-Every day: open the Dashboard, clear your **due reviews first**, then do the day's focus. Stop when the time is up, even mid-topic. Short and daily beats long and occasional.
+Every day: open the Excel & Pro Forma page from Home, clear your **due reviews first**, then do the day's focus. Stop when the time is up, even mid-topic. Short and daily beats long and occasional.
 
 | Day | Focus | What to do |
 |---|---|---|
@@ -49,7 +52,7 @@ Every day: open the Dashboard, clear your **due reviews first**, then do the day
 | 11 | Real Excel | Download one Level 2 grid as .xlsx, build it in Excel, upload it. Then the 10-minute cash flow sprint. |
 | 12 | Development budget | Level 3: budget and sources grid, then the two go/no-go questions. |
 | 13 | Development returns | Draw schedule grid, then the guided case "Development pro forma" (worked example). |
-| 14 | First capstone | "ADU infill" case study (25 minutes, timed). Then read your Dashboard: weakest topics, most common mistake type, and the confidence chart. |
+| 14 | First capstone | "ADU infill" case study (25 minutes, timed). Then read your Excel & Pro Forma dashboard: weakest topics, most common mistake type, and the confidence chart. |
 
 After two weeks: keep the daily reviews going, work through Levels 4 and 5, and take the other two capstones (35 and 45 minutes) under test conditions.
 
@@ -59,9 +62,10 @@ After two weeks: keep the daily reviews going, work through Levels 4 and 5, and 
 
 | Page | What it is for |
 |---|---|
-| **Dashboard** | Streak, reviews due today, mastery by topic, accuracy trend, most common mistake types, and a confidence-versus-accuracy chart. One-click session buttons. |
-| **Practice** | Build a session: 10, 20 or 45 minutes. Choose Smart mix, due reviews, weakest topics, new material, a drill of your mistakes, or flashcards only. |
-| **Library** | Every question by level and topic. Filter by type or status. Open any one and retry it with new numbers. |
+| **Home** | One tile per category, with the Excel & Pro Forma course featured at the top. Hover a tile (or press its "i" button on a phone) to see what the category covers. **Mixed review** runs the reviews that are due across every category in one session. |
+| **A category page** (click a tile) | What the category is, what you will be able to do, its subtopics, how much is built and how well you know it. The Excel & Pro Forma page is the full dashboard: streak, reviews due, mastery by topic, accuracy trend, most common mistake types and a confidence-versus-accuracy chart. |
+| **Practice** | Build a session: pick a category (or all of them), then 10, 20 or 45 minutes. Choose Smart mix, due reviews, weakest topics, new material, a drill of your mistakes, or flashcards only. |
+| **Library** | Every question. Pick a category at the top. The core course is listed by level and topic and can be filtered by type or status. Open any question and retry it with new numbers. |
 | **Functions** | A guide to the 44 Excel functions that matter for real estate models: what each does, how to write it, a live example, and a box to try your own version. Start with the primer at the top if formulas are new to you. |
 | **Mistakes** | Your mistake journal: every answer that was not fully right, your answer, the right answer, and what went wrong. One click drills them. |
 | **Settings** | Profile (Mac or Windows, Excel version), placement quiz, light or dark mode, backup, reset. |
@@ -87,7 +91,7 @@ After two weeks: keep the daily reviews going, work through Levels 4 and 5, and 
 
 ### Before you see the answer
 
-- **Confidence.** You lock in an answer by saying how sure you are. The Dashboard then shows whether you are as right as you feel.
+- **Confidence.** You lock in an answer by saying how sure you are. The Excel & Pro Forma dashboard then shows whether you are as right as you feel.
 - **Hints.** A ladder: a nudge, then the concept, then a partial formula, then the full solution. Each hint lowers the credit for that attempt (75%, 50%, 25%); seeing the solution earns none.
 
 ### The curriculum
@@ -102,7 +106,7 @@ After two weeks: keep the daily reviews going, work through Levels 4 and 5, and 
 | 5 Sensitivity and presentation | Data tables, scenarios, check cells, summary page | 16 |
 | Capstone | Garden-style multifamily acquisition, 120-unit mid-rise development, ADU infill | 3 |
 
-A level opens when the ones before it reach 80% mastery. You can also jump ahead from the Dashboard, the Library or Settings.
+A level opens when the ones before it reach 80% mastery. You can also jump ahead from the Excel & Pro Forma page, the Library or Settings.
 
 ---
 
@@ -197,13 +201,49 @@ On a small screen the Practice page leaves out spreadsheet tasks and shortcut dr
 
 ---
 
+## The categories
+
+| Category | Size | Status |
+|---|---|---|
+| **Excel & Pro Forma Modeling** (core) | 204 questions | Ready |
+| Commercial Leases & ARGUS | about 70 | Coming soon (2 samples) |
+| Plan Reading & Building Program | about 70 | Coming soon (2 samples, with a working plan viewer) |
+| Entitlements & Zoning | about 40 | Coming soon (2 samples) |
+| Market Analysis | about 70 | Coming soon (2 samples) |
+| Acquisitions & Closing | about 70 | Coming soon (2 samples) |
+| Debt & Capital Markets | about 40 | Coming soon (2 samples) |
+| Asset & Portfolio Management | about 70 | Coming soon (2 samples) |
+| Construction Cost & Schedule | about 24 | Coming soon (2 samples) |
+
+To see where things stand at any time:
+
+```bash
+npm run category-status
+```
+
+Three kinds of question exist only in the new categories:
+
+- **Plan reading.** A drawing you can pan, zoom and measure. You answer by clicking on it, measuring it or naming what is highlighted. Drawings are generated by the app; none is copied from a real project.
+- **Document review.** A document (an operating statement, a pay application) where you flag the lines that have a problem. A wrong flag cancels a right one.
+- **Scenario judgment.** A situation and several responses. One is best, some are workable, some are poor, and every one is explained afterwards.
+
+Every category keeps its own review queue and its own mastery bar. Your progress in the Excel & Pro Forma course is untouched by any of this.
+
+### Building out a category
+
+Each category has a build spec: `src/content/categories/<name>/BUILD_SPEC.md`. At the bottom of each spec is a **BUILD PROMPT**. To build a category, open this folder in Claude Code, start a new session with the model the prompt names, and paste the prompt (it builds one chunk of about 15 to 25 questions per session). `docs/BUILDING_CATEGORIES.md` is the instruction manual those sessions follow.
+
+Suggested order: Construction, Debt & Capital Markets, Acquisitions, Market Analysis, Asset & Portfolio Management, Entitlements, Commercial Leases & ARGUS, Plan Reading. Any order works.
+
+---
+
 ## Checking the content
 
 ```bash
 npm run validate
 ```
 
-This checks every question file and runs the automated tests (about 1,000 of them). The tests:
+This checks every question file and runs the automated tests (well over 1,000 of them). The tests:
 
 - run every spreadsheet task's model solution through the grader and require 100%
 - enter every listed "common mistake" and require that it is marked wrong and named correctly
@@ -213,6 +253,7 @@ This checks every question file and runs the automated tests (about 1,000 of the
 - write every spreadsheet task to an .xlsx file, read it back and grade it
 - run the live example of every function in the guide
 - enforce the curriculum rules: 150+ questions, and a grid build and an error hunt in every topic
+- run the same checks on every question in the new categories, check the generated drawings against their own dimensions, and confirm that every number in a build spec was computed by the app
 
 If it ends with "passed", the content is sound.
 
