@@ -1,105 +1,146 @@
 /**
  * The home screen: one tile per category, read from the registry. The core
- * Excel & Pro Forma course is featured at the top. Hovering a tile (or
- * pressing its "i" button on a touch screen) shows what the category covers.
+ * Excel & Pro Forma course is featured at the top. Clicking a tile opens an
+ * overlay that describes the category; from there you can go on to its page.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bar, CategoryIcon, StatusChip } from '../components/CategoryBits';
 import { EVERY_ITEM } from '../content';
-import { CATEGORIES, TIER_SCOPE, type Category } from '../content/categories/registry';
+import { CATEGORIES, TIER_LABELS, TIER_SCOPE, type Category } from '../content/categories/registry';
 import { categoriesWithDue, categoryStats, dueEverywhere, type CategoryStats } from '../learn/category';
 import { ALL_CATEGORIES, isNarrowScreen, startSession } from '../learn/start';
 import { startOfDay } from '../learn/sm2';
 import { streak } from '../learn/stats';
 import { useProgress } from '../store/progress';
 
-function HoverCard({ cat, stats, id }: { cat: Category; stats: CategoryStats; id: string }) {
-  return (
-    <div className="cat-card" id={id} role="tooltip">
-      <p>{cat.summary}</p>
-      <div className="cat-card-label">What you will learn</div>
-      <ul>
-        {cat.bullets.map((b) => (
-          <li key={b}>{b}</li>
-        ))}
-      </ul>
-      <dl>
-        <dt>Size</dt>
-        <dd>
-          {cat.tier === 'CORE' ? 'Core' : `${cat.tier[0]}${cat.tier.slice(1).toLowerCase()}`}: {TIER_SCOPE[cat.tier].toLowerCase()}
-        </dd>
-        <dt>Questions</dt>
-        <dd>{cat.tier === 'CORE' ? `${stats.built}` : `about ${stats.target} when finished (${stats.built} ready now)`}</dd>
-        <dt>Status</dt>
-        <dd>
-          <StatusChip cat={cat} />
-        </dd>
-      </dl>
-    </div>
+/** The overlay shown when a tile is clicked: what the category is, and a way on to its page. */
+function CategoryOverlay({ cat, stats, onClose }: { cat: Category; stats: CategoryStats; onClose: () => void }) {
+  const openRef = useRef<HTMLAnchorElement>(null);
+  const isCore = cat.tier === 'CORE';
+
+  useEffect(() => {
+    openRef.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // rendered at the top of the page so it sits above everything, including the phone's bottom navigation
+  return createPortal(
+    <div
+      className="modal-back"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cat-overlay-title"
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onClose(); // a click on the dimmed background closes it
+      }}
+    >
+      <div className="modal cat-overlay">
+        <button type="button" className="cat-overlay-close" aria-label="Close" onClick={onClose}>
+          ×
+        </button>
+        <div className="cat-overlay-head">
+          <span className="cat-icon big">
+            <CategoryIcon path={cat.icon} size={30} />
+          </span>
+          <div>
+            <div className="row" style={{ marginBottom: 4 }}>
+              <span className={`chip${isCore ? ' core' : ''}`}>{TIER_LABELS[cat.tier]}</span>
+              <StatusChip cat={cat} />
+              {stats.due > 0 && <span className="chip due">{stats.due} due</span>}
+            </div>
+            <h2 id="cat-overlay-title">{cat.title}</h2>
+          </div>
+        </div>
+
+        <p className="cat-overlay-summary">{cat.summary}</p>
+
+        <div className="cat-card-label">What you will learn</div>
+        <ul className="objectives">
+          {cat.bullets.map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+
+        <dl className="facts" style={{ marginTop: 14 }}>
+          <dt>Size</dt>
+          <dd>{isCore ? TIER_SCOPE[cat.tier] : `${TIER_LABELS[cat.tier]}: ${TIER_SCOPE[cat.tier].toLowerCase()}`}</dd>
+          <dt>Questions</dt>
+          <dd>{isCore ? `${stats.built}, all ready` : `about ${stats.target} when finished (${stats.built} ready to try now)`}</dd>
+          <dt>Status</dt>
+          <dd>
+            <StatusChip cat={cat} />
+          </dd>
+          {stats.seen > 0 && (
+            <>
+              <dt>Your mastery</dt>
+              <dd>
+                {Math.round(stats.mastery * 100)}% of what is built
+                {stats.due > 0 ? `, ${stats.due} review${stats.due === 1 ? '' : 's'} due` : ''}
+              </dd>
+            </>
+          )}
+        </dl>
+
+        <div className="cat-overlay-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            Close
+          </button>
+          <Link ref={openRef} className="btn primary big" to={`/c/${cat.slug}`}>
+            Go to {isCore ? 'the course' : 'this category'} →
+          </Link>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
-function Tile({ cat, stats, featured = false }: { cat: Category; stats: CategoryStats; featured?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const cardId = `about-${cat.slug}`;
-
-  // an opened card closes on Escape or a click elsewhere
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    const onDown = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('pointerdown', onDown);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('pointerdown', onDown);
-    };
-  }, [open]);
-
+function Tile({ cat, stats, featured = false, onOpen }: { cat: Category; stats: CategoryStats; featured?: boolean; onOpen: (cat: Category, from: HTMLElement) => void }) {
   return (
-    <div ref={ref} className={`cat-tile-wrap${featured ? ' featured' : ''}${open ? ' open' : ''}`}>
-      <Link className="cat-tile" to={`/c/${cat.slug}`} aria-describedby={cardId}>
-        <div className="cat-tile-top">
-          <span className="cat-icon">
-            <CategoryIcon path={cat.icon} size={featured ? 28 : 22} />
-          </span>
-          <div className="cat-chips">
-            {featured && <span className="chip core">Core</span>}
-            {!featured && <span className="chip">{cat.tier[0] + cat.tier.slice(1).toLowerCase()}</span>}
-            <StatusChip cat={cat} />
-            {stats.due > 0 && <span className="chip due">{stats.due} due</span>}
-          </div>
+    <button
+      type="button"
+      className={`cat-tile${featured ? ' featured' : ''}`}
+      aria-haspopup="dialog"
+      aria-label={`${cat.title}. Show what this category covers.`}
+      onClick={(e) => onOpen(cat, e.currentTarget)}
+    >
+      <div className="cat-tile-top">
+        <span className="cat-icon">
+          <CategoryIcon path={cat.icon} size={featured ? 28 : 22} />
+        </span>
+        <div className="cat-chips">
+          <span className={`chip${featured ? ' core' : ''}`}>{TIER_LABELS[cat.tier]}</span>
+          <StatusChip cat={cat} />
+          {stats.due > 0 && <span className="chip due">{stats.due} due</span>}
         </div>
-        <div className="cat-title">{cat.title}</div>
-        {featured && <p className="cat-summary">{cat.summary}</p>}
-        <div className="cat-progress">
-          {featured || stats.built >= stats.target ? (
-            <>
-              <Bar value={stats.mastery} label="Mastery" />
-              <span>
-                {Math.round(stats.mastery * 100)}% mastered · {stats.built} questions
-              </span>
-            </>
-          ) : (
-            <>
-              <Bar value={stats.built / stats.target} label="Built" tone="build" />
-              <span>
-                {stats.built} of {stats.target} built
-                {stats.seen > 0 ? ` · ${Math.round(stats.mastery * 100)}% mastered` : ''}
-              </span>
-            </>
-          )}
-        </div>
-      </Link>
-      <button type="button" className="cat-info" aria-label={`About ${cat.title}`} aria-expanded={open} aria-controls={cardId} onClick={() => setOpen((o) => !o)}>
-        i
-      </button>
-      <HoverCard cat={cat} stats={stats} id={cardId} />
-    </div>
+      </div>
+      <div className="cat-title">{cat.title}</div>
+      {featured && <p className="cat-summary">{cat.summary}</p>}
+      <div className="cat-progress">
+        {featured || stats.built >= stats.target ? (
+          <>
+            <Bar value={stats.mastery} label="Mastery" />
+            <span>
+              {Math.round(stats.mastery * 100)}% mastered · {stats.built} questions
+            </span>
+          </>
+        ) : (
+          <>
+            <Bar value={stats.built / stats.target} label="Built" tone="build" />
+            <span>
+              {stats.built} of {stats.target} built
+              {stats.seen > 0 ? ` · ${Math.round(stats.mastery * 100)}% mastered` : ''}
+            </span>
+          </>
+        )}
+      </div>
+    </button>
   );
 }
 
@@ -108,6 +149,8 @@ export function Home() {
   const attempts = useProgress((s) => s.attempts);
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
+  const [open, setOpen] = useState<Category | null>(null);
+  const openedFrom = useRef<HTMLElement | null>(null);
   const now = Date.now();
 
   const due = dueEverywhere(cards, now).length;
@@ -124,12 +167,22 @@ export function Home() {
     else navigate('/session');
   }
 
+  const show = (cat: Category, from: HTMLElement) => {
+    openedFrom.current = from;
+    setOpen(cat);
+  };
+  // closing puts the keyboard back on the tile that opened the overlay
+  const close = useCallback(() => {
+    setOpen(null);
+    openedFrom.current?.focus({ preventScroll: true });
+  }, []);
+
   return (
     <div className="page">
       <div className="page-head">
         <div>
           <h1>Groundwork</h1>
-          <p>Real estate development, one skill at a time. Pick a category, or review what is due across all of them.</p>
+          <p>Real estate development, one skill at a time. Click a category to see what it covers, or review what is due across all of them.</p>
         </div>
         <div className="row">
           <button type="button" className="btn primary" onClick={mixedReview} disabled={due === 0} title="Interleaves the reviews that are due in every category">
@@ -163,17 +216,19 @@ export function Home() {
           </div>
         </div>
 
-        <Tile cat={core} stats={categoryStats(core, cards, now)} featured />
+        <Tile cat={core} stats={categoryStats(core, cards, now)} featured onOpen={show} />
 
         <div>
           <h2 className="section-title">More categories</h2>
           <div className="cat-grid">
             {others.map((c) => (
-              <Tile key={c.slug} cat={c} stats={categoryStats(c, cards, now)} />
+              <Tile key={c.slug} cat={c} stats={categoryStats(c, cards, now)} onOpen={show} />
             ))}
           </div>
         </div>
       </div>
+
+      {open && <CategoryOverlay cat={open} stats={categoryStats(open, cards, now)} onClose={close} />}
     </div>
   );
 }

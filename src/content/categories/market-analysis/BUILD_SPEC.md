@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Tier | BIG: 70 questions, two difficulty levels (1 Foundations, 2 Applied), one capstone case (level 3) |
+| Tier | Large (tier id `BIG`): 70 questions, two difficulty levels (1 Foundations, 2 Applied), one capstone case (level 3) |
 | Status when this spec was written | `planned`, 2 seed questions built |
 | Build with | **Opus 5.5, high effort** |
 | Legal verification | Not required. Market data is never asserted as real (see section 11) |

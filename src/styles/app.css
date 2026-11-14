@@ -1517,21 +1517,21 @@ table.results td:nth-child(4) {
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 12px;
 }
-.cat-tile-wrap {
-  position: relative;
-}
 .cat-tile {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
   height: 100%;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  text-decoration: none;
-  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 .cat-tile:hover,
 .cat-tile:focus-visible {
@@ -1543,7 +1543,6 @@ table.results td:nth-child(4) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-right: 30px; /* room for the info button */
 }
 .cat-chips {
   display: flex;
@@ -1584,16 +1583,16 @@ table.results td:nth-child(4) {
   font-size: 12.5px;
   color: var(--muted);
 }
-.cat-tile-wrap.featured .cat-tile {
+.cat-tile.featured {
   padding: 22px;
   border-width: 2px;
   border-color: var(--accent);
   background: linear-gradient(135deg, var(--accent-weak), var(--surface) 55%);
 }
-.cat-tile-wrap.featured .cat-title {
+.cat-tile.featured .cat-title {
   font-size: 24px;
 }
-.cat-tile-wrap.featured .cat-icon {
+.cat-tile.featured .cat-icon {
   width: 52px;
   height: 52px;
   background: var(--accent);
@@ -1621,56 +1620,6 @@ table.results td:nth-child(4) {
   border-color: transparent;
   color: var(--warn);
 }
-.cat-info {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--muted);
-  font: italic 700 13px Georgia, 'Times New Roman', serif;
-  cursor: pointer;
-  z-index: 2;
-}
-.cat-info:hover,
-.cat-info[aria-expanded='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.cat-card {
-  display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  width: max(100%, 320px);
-  max-width: min(520px, 92vw);
-  z-index: 30;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  font-size: 13.5px;
-  line-height: 1.45;
-}
-.cat-grid .cat-tile-wrap:nth-child(n) .cat-card {
-  width: max(100%, 300px);
-}
-.cat-tile-wrap.open .cat-card {
-  display: block;
-}
-@media (hover: hover) and (pointer: fine) {
-  .cat-tile-wrap:hover .cat-card,
-  .cat-tile-wrap:focus-within .cat-card {
-    display: block;
-  }
-}
-.cat-card p {
-  margin: 0 0 8px;
-}
 .cat-card-label {
   font-size: 11.5px;
   font-weight: 700;
@@ -1678,23 +1627,16 @@ table.results td:nth-child(4) {
   letter-spacing: 0.05em;
   color: var(--muted);
 }
-.cat-card ul {
-  margin: 4px 0 10px;
-  padding-left: 18px;
-}
-.cat-card dl,
 dl.facts {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 4px 12px;
   margin: 0;
 }
-.cat-card dt,
 dl.facts dt {
   color: var(--muted);
   font-weight: 600;
 }
-.cat-card dd,
 dl.facts dd {
   margin: 0;
 }
@@ -1908,7 +1850,61 @@ ul.objectives {
   .cat-head {
     flex-direction: column;
   }
-  .cat-card {
-    width: 100%;
-  }
+}
+
+/* ---- the overlay that opens when a category tile is clicked ---- */
+.cat-overlay {
+  position: relative;
+  width: min(600px, 100%);
+}
+.cat-overlay-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cat-overlay-close:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+.cat-overlay-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-right: 40px;
+}
+.cat-overlay-head h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.cat-overlay-summary {
+  margin: 0 0 14px;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+.cat-overlay .cat-card-label {
+  margin-bottom: 6px;
+}
+/* The buttons stay in view at the bottom of the overlay even when its text has to scroll (small screens). */
+.cat-overlay-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 20px -24px -24px;
+  padding: 12px 24px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 14px 14px;
 }

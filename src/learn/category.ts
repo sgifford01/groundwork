@@ -4,7 +4,7 @@
  * spaced-repetition cards, so a new category needs no code here.
  */
 import { EVERY_ITEM, itemsOfCategory } from '../content';
-import { CATEGORIES, CATEGORY_TOPICS, categoryTopic, CORE_CATEGORY, type Category } from '../content/categories/registry';
+import { CATEGORIES, CATEGORY_TOPICS, categoryTopic, CORE_CATEGORY, TIER_LABELS, type Category } from '../content/categories/registry';
 import type { Item } from '../content/schema';
 import { TOPICS, topicById } from '../content/topics';
 import type { Cards } from './mastery';
@@ -59,7 +59,7 @@ export function statusRows(): { slug: string; title: string; tier: string; statu
     return {
       slug: c.slug,
       title: c.title,
-      tier: c.tier,
+      tier: TIER_LABELS[c.tier],
       status: c.status,
       built,
       target: c.slug === CORE_CATEGORY ? built : c.targetItems,

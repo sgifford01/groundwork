@@ -62,7 +62,7 @@ After two weeks: keep the daily reviews going, work through Levels 4 and 5, and 
 
 | Page | What it is for |
 |---|---|
-| **Home** | One tile per category, with the Excel & Pro Forma course featured at the top. Hover a tile (or press its "i" button on a phone) to see what the category covers. **Mixed review** runs the reviews that are due across every category in one session. |
+| **Home** | One tile per category, with the Excel & Pro Forma course featured at the top. Click a tile and an overlay tells you what the category covers, how big it is and how far along it is, with a button to go on to its page. **Mixed review** runs the reviews that are due across every category in one session. |
 | **A category page** (click a tile) | What the category is, what you will be able to do, its subtopics, how much is built and how well you know it. The Excel & Pro Forma page is the full dashboard: streak, reviews due, mastery by topic, accuracy trend, most common mistake types and a confidence-versus-accuracy chart. |
 | **Practice** | Build a session: pick a category (or all of them), then 10, 20 or 45 minutes. Choose Smart mix, due reviews, weakest topics, new material, a drill of your mistakes, or flashcards only. |
 | **Library** | Every question. Pick a category at the top. The core course is listed by level and topic and can be filtered by type or status. Open any question and retry it with new numbers. |
@@ -233,7 +233,7 @@ Every category keeps its own review queue and its own mastery bar. Your progress
 
 Each category has a build spec: `src/content/categories/<name>/BUILD_SPEC.md`. At the bottom of each spec is a **BUILD PROMPT**. To build a category, open this folder in Claude Code, start a new session with the model the prompt names, and paste the prompt (it builds one chunk of about 15 to 25 questions per session). `docs/BUILDING_CATEGORIES.md` is the instruction manual those sessions follow.
 
-Suggested order: Construction, Debt & Capital Markets, Acquisitions, Market Analysis, Asset & Portfolio Management, Entitlements, Commercial Leases & ARGUS, Plan Reading. Any order works.
+Suggested order (hardest first, while the strongest model is available): the lease simulator for Commercial Leases & ARGUS, then Plan Reading, then Entitlements, then the rest of Commercial Leases; after that Acquisitions, Market Analysis, Asset & Portfolio Management, Debt & Capital Markets and Construction. The session-by-session plan is at the end of `docs/BUILDING_CATEGORIES.md`.
 
 ---
 

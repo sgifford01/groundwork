@@ -17,7 +17,7 @@ This is the workflow for building any category of Groundwork from its build spec
 
 ```
 src/content/categories/
-  registry.ts                 THE list of categories: slug, title, tier, status, hover text, subtopics, targets, build model
+  registry.ts                 THE list of categories: slug, title, tier, status, overlay text, subtopics, targets, build model
   index.ts                    collects every category's questions and checks them against the registry (automatic)
   define.ts                   categoryItems('<slug>', [...]) helper
   specs.ts                    renders the generated blocks of every BUILD_SPEC.md
@@ -147,13 +147,38 @@ A spec may ask for a NEW type (for example `leasesim` in the ARGUS spec). Follow
 
 ## Recommended build order
 
-1. `construction` (small, no new components; a good first run of the workflow)
-2. `capital-markets`
-3. `acquisitions`
-4. `market-analysis`
-5. `asset-management`
-6. `entitlements` (needs careful source checking; do it when there is time to verify)
-7. `argus` (new lease engine and simulator)
-8. `plan-reading` (largest engineering effort; more drawing sets)
+The owner asked (2026-11-14) for the hardest work to be done first, while the Fable model is available. So the order below is by how much a session needs the strongest model, not by ease. One row is one session. Check `npm run category-status` before starting: skip any row that is already done.
 
-The order runs from least to most engineering risk, and puts the categories most useful for an internship interview early. Any order works: categories do not depend on each other.
+### Phase A: needs Fable 5.2 at high effort
+
+| Step | Session | Why it is here |
+|---|---|---|
+| 1 | `argus` chunk 4: lease engine, simulator component, `leasesim` type, 9 questions | The only part of Commercial Leases that needs new engineering. Done first, it unblocks the whole 70-question category for any model. It does not depend on ARGUS chunks 1 to 3 |
+| 2 | `plan-reading` chunk 1: viewer extensions, 19 questions | Every later plan-reading chunk builds on these viewer features |
+| 3 | `plan-reading` chunk 2: site plan, section, elevation and roof plan sheets, 18 questions | New drawing generators |
+| 4 | `plan-reading` chunk 3: retail, office and mixed-use podium plan sets, 12 questions | The largest drawing-generation job in the app |
+| 5 | `plan-reading` chunk 4: takeoff attachment for grid questions, 18 questions | Touches the grid types additively; the existing grid tests must pass untouched |
+| 6 | `plan-reading` chunk 5: capstone and accessibility pass, 1 question | Finishes the category |
+
+### Phase B: better with Fable, workable with Opus 5.5 at high effort
+
+| Step | Session | Why it is here |
+|---|---|---|
+| 7 | `entitlements` chunk 1: verification log, zoning, approvals, CEQA, 19 questions | Every rule must be checked against official sources; careful reading matters more than speed |
+| 8 | `entitlements` chunk 2: state housing laws, local rules, risk, mini-case, 19 questions | Same |
+| 9 | `argus` chunk 1: rent rolls and base rent, 16 questions | Content only, once step 1 is done |
+| 10 | `argus` chunk 2: recoveries and concessions, 18 questions | |
+| 11 | `argus` chunk 3: market leasing assumptions and vacancy, 18 questions | |
+| 12 | `argus` chunk 5: reports and capstone, 7 questions | Uses the engine from step 1 |
+
+### Phase C: Opus 5.5 (the effort each spec names)
+
+| Step | Sessions | Model |
+|---|---|---|
+| 13 to 16 | `acquisitions` chunks 1 to 4 (21, 18, 15, 14 questions) | Opus 5.5 high |
+| 17 to 20 | `market-analysis` chunks 1 to 4 (18, 19, 19, 12) | Opus 5.5 high |
+| 21 to 24 | `asset-management` chunks 1 to 4 (18, 17, 17, 16) | Opus 5.5 high |
+| 25 to 26 | `capital-markets` chunks 1 and 2 (21, 17) | Opus 5.5 medium |
+| 27 | `construction` chunk 1 (22) | Opus 5.5 medium |
+
+If Fable time runs short, protect steps 1 to 5 in that order: they are the ones a weaker model is most likely to get wrong. Phases B and C can go in any order; categories do not depend on each other.

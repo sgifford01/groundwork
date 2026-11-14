@@ -18,19 +18,21 @@ Changes to the core course itself happen only when the owner asks for them expli
 
 ## The category system
 
-Every topic is a standalone category, listed in **`src/content/categories/registry.ts`** (slug, title, tier, status, hover summary and bullets, objectives, subtopics with target counts, `needsLegalVerification`, recommended build model). The home screen tiles, hover cards, landing pages (`/#/c/<slug>`), per-category review queues, the Library picker and `npm run category-status` are all generated from it. A new category needs a registry entry and a folder; no per-category code.
+Every topic is a standalone category, listed in **`src/content/categories/registry.ts`** (slug, title, tier, status, summary and bullets for the tile overlay, objectives, subtopics with target counts, `needsLegalVerification`, recommended build model). The home screen tiles, the overlay each tile opens, landing pages (`/#/c/<slug>`), per-category review queues, the Library picker and `npm run category-status` are all generated from it. A new category needs a registry entry and a folder; no per-category code.
 
 | Category | Slug | Tier | Build with |
 |---|---|---|---|
-| Excel & Pro Forma Modeling | `excel-proforma` | CORE | built |
-| Commercial Leases & ARGUS | `argus` | BIG (70) | Fable 5.2 high |
-| Plan Reading & Building Program | `plan-reading` | BIG (70) | Fable 5.2 high |
-| Entitlements & Zoning | `entitlements` | MEDIUM (40), legal verification | Opus 5.5 high |
-| Market Analysis | `market-analysis` | BIG (70) | Opus 5.5 high |
-| Acquisitions & Closing | `acquisitions` | BIG (70) | Opus 5.5 high |
-| Debt & Capital Markets | `capital-markets` | MEDIUM (40) | Opus 5.5 medium |
-| Asset & Portfolio Management | `asset-management` | BIG (70) | Opus 5.5 high |
-| Construction Cost & Schedule | `construction` | SMALL (24) | Opus 5.5 medium |
+| Excel & Pro Forma Modeling | `excel-proforma` | Core | built |
+| Commercial Leases & ARGUS | `argus` | Large (70) | Fable 5.2 high |
+| Plan Reading & Building Program | `plan-reading` | Large (70) | Fable 5.2 high |
+| Entitlements & Zoning | `entitlements` | Medium (40), legal verification | Opus 5.5 high |
+| Market Analysis | `market-analysis` | Large (70) | Opus 5.5 high |
+| Acquisitions & Closing | `acquisitions` | Large (70) | Opus 5.5 high |
+| Debt & Capital Markets | `capital-markets` | Medium (40) | Opus 5.5 medium |
+| Asset & Portfolio Management | `asset-management` | Large (70) | Opus 5.5 high |
+| Construction Cost & Schedule | `construction` | Small (24) | Opus 5.5 medium |
+
+On screen the tiers are called Core, Large, Medium and Small (`TIER_LABELS`); the ids in the registry stay `CORE`, `BIG`, `MEDIUM`, `SMALL`.
 
 **To build a category, follow `docs/BUILDING_CATEGORIES.md`** and the category's **`src/content/categories/<slug>/BUILD_SPEC.md`** (16 sections; a ready-to-paste BUILD PROMPT is at the bottom). Each folder also holds `spec-data.ts` (worked examples, type mix and chunk plan as data: run `npm run sync-specs` after editing it or the registry) and `items.ts` (two seed questions that set the quality bar). New questions go in `items-<subtopic>.ts` files, which are picked up automatically.
 
@@ -242,7 +244,7 @@ Extend the union in `content/schema.ts` (and the label map), add grading in `gra
 
 Multi-sheet tasks work (sheet tabs, green cross-sheet links, `sheet:` on a mistake, `Sheet!B7` keys in edge cases); `l5-present-grid-summary-page` is the one example so far. Put the sheet with the yellow cells first. Pointing at a cell on another tab with the mouse is not supported: cross-sheet references are typed.
 
-**Category system (built 2026-11-14):** registry; home screen tiles with hover cards; landing pages; per-category review and mastery; mixed review; the `judgment`, `docreview` and `plan` types; a minimal plan viewer with one plan set (`mf-double-loaded`: cover, floor plan, enlarged unit plan); a BUILD_SPEC and two seed questions for each of the eight new categories (16 seeds); builder docs; `category-status` and `sync-specs`.
+**Category system (built 2026-11-14):** registry; home screen tiles that open a description overlay when clicked; landing pages; per-category review and mastery; mixed review; the `judgment`, `docreview` and `plan` types; a minimal plan viewer with one plan set (`mf-double-loaded`: cover, floor plan, enlarged unit plan); a BUILD_SPEC and two seed questions for each of the eight new categories (16 seeds); builder docs; `category-status` and `sync-specs`.
 
 **Not built yet:** the full content of the eight categories (438 questions to go). Run `npm run category-status` for the current counts, and keep each category's `status` in the registry up to date (`planned` → `in-progress` → `built`).
 

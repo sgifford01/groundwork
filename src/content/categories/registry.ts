@@ -1,7 +1,7 @@
 /**
  * THE CATEGORY REGISTRY.
  *
- * One entry per category. The home screen tiles, hover cards, landing pages,
+ * One entry per category. The home screen tiles, their overlays, landing pages,
  * review queues, `npm run category-status` and the tests all read this file,
  * so a new category needs an entry here plus a folder of the same name
  * (src/content/categories/<slug>/) holding BUILD_SPEC.md, examples.ts and its
@@ -35,9 +35,9 @@ export interface Category {
   title: string;
   tier: Tier;
   status: CategoryStatus;
-  /** Hover card: one or two sentences. */
+  /** Shown in the overlay that opens when a tile is clicked: one or two sentences. */
   summary: string;
-  /** Hover card: four to six things you will learn. */
+  /** Shown in the same overlay: four to six things you will learn. */
   bullets: string[];
   /** Landing page: a short paragraph on what this is and why it matters. */
   description: string;
@@ -55,6 +55,9 @@ export interface Category {
 }
 
 export const CORE_CATEGORY = 'excel-proforma';
+
+/** What each tier is called on screen. The tier ids themselves (CORE, BIG, MEDIUM, SMALL) never change. */
+export const TIER_LABELS: Record<Tier, string> = { CORE: 'Core', BIG: 'Large', MEDIUM: 'Medium', SMALL: 'Small' };
 
 export const TIER_SCOPE: Record<Tier, string> = {
   CORE: 'The main course: Levels 0 to 5 and three capstones',

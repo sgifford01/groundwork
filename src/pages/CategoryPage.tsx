@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Bar, CategoryIcon, StatusChip, SubtopicList } from '../components/CategoryBits';
-import { categoryBySlug, CORE_CATEGORY, TIER_SCOPE } from '../content/categories/registry';
+import { categoryBySlug, CORE_CATEGORY, TIER_LABELS, TIER_SCOPE } from '../content/categories/registry';
 import { categoryStats } from '../learn/category';
 import { isNarrowScreen, startSession } from '../learn/start';
 import type { SessionMode } from '../learn/session';
@@ -57,7 +57,7 @@ export function CategoryPage() {
         </span>
         <div>
           <div className="row" style={{ marginBottom: 4 }}>
-            {isCore ? <span className="chip core">Core</span> : <span className="chip">{cat.tier[0] + cat.tier.slice(1).toLowerCase()}</span>}
+            <span className={`chip${isCore ? ' core' : ''}`}>{TIER_LABELS[cat.tier]}</span>
             <StatusChip cat={cat} />
           </div>
           <h1>{cat.title}</h1>
@@ -124,7 +124,9 @@ export function CategoryPage() {
               <h2>About this category</h2>
               <dl className="facts">
                 <dt>Size</dt>
-                <dd>{TIER_SCOPE[cat.tier]}</dd>
+                <dd>
+                  {TIER_LABELS[cat.tier]}: {TIER_SCOPE[cat.tier].toLowerCase()}
+                </dd>
                 <dt>Covers</dt>
                 <dd>
                   <ul className="objectives">

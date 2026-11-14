@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Tier | BIG: 70 questions, two difficulty levels (1 Foundations, 2 Applied), one capstone case (level 3) |
+| Tier | Large (tier id `BIG`): 70 questions, two difficulty levels (1 Foundations, 2 Applied), one capstone case (level 3) |
 | Status when this spec was written | `planned`, 2 seed questions built, minimal plan viewer working |
 | Build with | **Fable 5.2, high effort** (it extends a drawing generator and an interactive component) |
 | Legal verification | Not required (zoning numbers are always GIVEN, never taught or asserted) |
