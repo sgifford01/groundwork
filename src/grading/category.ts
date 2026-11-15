@@ -4,10 +4,13 @@
  * the tests can call these directly.
  */
 import type { DocReviewItem, JudgmentItem, MistakeCategory, NumericItem, PlanQItem } from '../content/schema';
-import { seededRng, shuffle, type Rng } from '../engine/rng';
-import { renderTemplate, sampleVars, type VarValues } from '../engine/variables';
+import { isCellError } from '../engine/format';
+import { pick, seededRng, shuffle, type Rng } from '../engine/rng';
+import { renderTemplate, sampleRange, sampleVars, type VarValues } from '../engine/variables';
+import { evalFormula } from '../engine/workbook';
 import { elementMatches, type PlanElement, type PlanSet } from '../plans/model';
 import { buildPlanSet } from '../plans/sets';
+import { figureFor } from './plangrid';
 import { gradeNumeric, type NumericResult } from './simple';
 
 // ---- scenario judgment -------------------------------------------------------
@@ -55,11 +58,30 @@ export function gradeDocReview(item: DocReviewItem, flagged: readonly string[]):
   return { score: Math.max(0, (hits - falseFlags.length) / item.issues.length), found, falseFlags };
 }
 
-/** A document with its {templates} filled in for one attempt. */
+/**
+ * Like sampleVars, but formula variables can also use the names in `base`
+ * (a drawing's facts). Choices and ranges are drawn in the same order.
+ */
+export function sampleVarsOver(base: VarValues, specs: DocReviewItem['vars'], rng: Rng): VarValues {
+  const out: VarValues = {};
+  for (const spec of specs) {
+    if ('formula' in spec) {
+      const v = evalFormula(spec.formula, { ...base, ...out });
+      if (isCellError(v)) throw new Error(`Variable "${spec.name}" formula ${spec.formula} failed: ${v.error} ${v.message}`);
+      out[spec.name] = v;
+    } else if ('choices' in spec) out[spec.name] = pick(rng, spec.choices);
+    else out[spec.name] = sampleRange(rng, spec.min, spec.max, spec.step);
+  }
+  return out;
+}
+
+/** A document with its {templates} filled in for one attempt, and its drawing if it has one. */
 export function renderDocument(item: DocReviewItem, seed: number) {
-  const values = sampleVars(item.vars, seededRng(item.id, seed));
+  const set = item.figure ? figureFor({ id: item.id, figure: item.figure }, seed) : null;
+  const values: VarValues = set ? { ...set.facts, ...sampleVarsOver(set.facts, item.vars, seededRng(item.id, seed, 'vars')) } : sampleVars(item.vars, seededRng(item.id, seed));
   const fill = (s: string) => renderTemplate(s, values, item.vars);
   return {
+    set,
     values,
     lines: item.document.lines.map((l) => ({ ...l, text: fill(l.text), cells: (l.cells ?? []).map(fill) })),
     issues: item.issues.map((i) => ({ ...i, label: fill(i.label) })),

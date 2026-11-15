@@ -511,6 +511,17 @@ const Judgment = z
   })
   .strict();
 
+// ---- a drawing attached to a question (a generated plan set) ----
+
+/** The same shape as a plan question's `plan`: which plan set, its parameter variants (one per attempt), and the sheet shown first. */
+const Figure = z
+  .object({
+    set: z.string().min(1),
+    variants: z.array(z.record(z.string(), z.number())).min(1),
+    sheet: z.string().min(1),
+  })
+  .strict();
+
 // ---- document review: flag the lines of a document that contain a problem ----
 
 const DocLine = z
@@ -530,6 +541,8 @@ const DocReview = z
     ...base,
     type: z.literal('docreview'),
     vars: z.array(Variable).default([]),
+    /** Optional drawing shown above the document. Its plan facts can be used in the document's {templates} and in formula variables. */
+    figure: Figure.optional(),
     document: z
       .object({
         /** e.g. "Trailing-12 operating statement" */
@@ -748,6 +761,47 @@ const LeaseSim = z
   })
   .strict();
 
+// ---- plan takeoff: a drawing above a spreadsheet; some cells are read off the drawing ----
+
+/** A yellow cell the student fills with a number taken off the drawing (a count, a length, an area). */
+const Takeoff = z
+  .object({
+    /** The cell, e.g. "C4". It must not also be a cell of the workbook. */
+    cell: CellAddress,
+    /** Defaults to the first sheet. */
+    sheet: z.string().optional(),
+    /** What it is, in words, e.g. "One-bed units per floor". Shown in the results. */
+    label: z.string().min(3),
+    /** The correct value: a formula over the plan set's facts, e.g. "=one_bed_count". */
+    answer: Formula,
+    format: Format.default('general'),
+    tolerance: Tolerance.default({ pct: 0.005 }),
+    /**
+     * How the grader varies this cell when it stress-tests the formulas that use it, as for a blue input.
+     * Left out = numbers move roughly -30% to +40%. Give a range for counts used in lookups or rounding.
+     */
+    vary: Vary.optional(),
+    /** Wrong takeoffs students commonly make: formulas over the plan facts, each with a label. */
+    mistakes: z.array(NumericMistake).default([]),
+  })
+  .strict();
+
+const PlanGrid = z
+  .object({
+    ...base,
+    type: z.literal('plangrid'),
+    figure: Figure,
+    /** The spreadsheet WITHOUT the takeoff cells: they are added from `takeoffs`. */
+    workbook: z.object({ sheets: z.array(Sheet).min(1) }).strict(),
+    takeoffs: z.array(Takeoff).min(1).max(8),
+    tolerance: Tolerance.default({ pct: 0.001 }),
+    /** As for a grid. Takeoff cells count as inputs here, so edge cases may set them. */
+    edgeCases: z.array(z.record(z.string(), z.union([z.number(), z.string(), z.boolean()]))).default([]),
+    mistakes: z.array(GridMistake).min(1),
+    explanation: z.string().min(3),
+  })
+  .strict();
+
 export const ItemSchema = z.discriminatedUnion('type', [
   Flashcard,
   Mcq,
@@ -767,6 +821,7 @@ export const ItemSchema = z.discriminatedUnion('type', [
   DocReview,
   PlanItem,
   LeaseSim,
+  PlanGrid,
 ]);
 
 export type Item = z.infer<typeof ItemSchema>;
@@ -792,6 +847,9 @@ export type JudgmentItem = Extract<Item, { type: 'judgment' }>;
 export type DocReviewItem = Extract<Item, { type: 'docreview' }>;
 export type PlanQItem = Extract<Item, { type: 'plan' }>;
 export type LeaseSimItem = Extract<Item, { type: 'leasesim' }>;
+export type PlanGridItem = Extract<Item, { type: 'plangrid' }>;
+export type TakeoffSpec = z.infer<typeof Takeoff>;
+export type FigureSpec = z.infer<typeof Figure>;
 export type LeaseScenarioSpec = z.infer<typeof LeaseScenario>;
 export type GridMistakeSpec = z.infer<typeof GridMistake>;
 export type BugSpec = z.infer<typeof Bug>;
@@ -803,7 +861,7 @@ export const SHEET_GRADED_TYPES: ItemType[] = ['grid', 'formula', 'case', 'timed
 export const WORKBOOK_TYPES: ItemType[] = ['grid', 'formula', 'case', 'timed', 'errorhunt', 'predict'];
 
 /** The types used only outside the core course. */
-export type CategoryOnlyType = 'judgment' | 'docreview' | 'plan' | 'leasesim';
+export type CategoryOnlyType = 'judgment' | 'docreview' | 'plan' | 'leasesim' | 'plangrid';
 export type CoreItemType = Exclude<ItemType, CategoryOnlyType>;
 
 /** The core course's 14 types. */
@@ -831,7 +889,8 @@ export const ALL_TYPE_LABELS: Record<ItemType, string> = {
   docreview: 'Document review',
   plan: 'Plan reading',
   leasesim: 'Lease simulator',
+  plangrid: 'Plan to spreadsheet',
 };
 
 /** Types that show a spreadsheet or drawing, or need a real keyboard, so they are left out of phone-friendly sessions. */
-export const DESKTOP_ONLY_TYPES: ItemType[] = ['grid', 'errorhunt', 'case', 'timed', 'shortcut', 'formula', 'predict', 'plan', 'leasesim'];
+export const DESKTOP_ONLY_TYPES: ItemType[] = ['grid', 'errorhunt', 'case', 'timed', 'shortcut', 'formula', 'predict', 'plan', 'leasesim', 'plangrid'];

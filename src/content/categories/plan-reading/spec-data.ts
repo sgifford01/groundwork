@@ -212,7 +212,8 @@ export const SPEC: SpecData = {
     numeric: 6,
     order: 2,
     explain: 1,
-    grid: 6,
+    grid: 2,
+    plangrid: 4,
     errorhunt: 2,
     docreview: 2,
     judgment: 2,
@@ -223,7 +224,16 @@ export const SPEC: SpecData = {
     { title: 'Chunk 1 (done 2026-11-15)', items: 19, scope: 'Viewer extensions V1 to V4 (section 13.3), sheets C-101 site plan and A-301 building section; plan-reading-set (8) and plan-reading-symbols (11 more)' },
     { title: 'Chunk 2 (done 2026-11-15)', items: 18, scope: 'Sheets A-103 roof plan, A-201 south elevation and A-402 unit reflected ceiling plan, with an elevation marker on the floor plan; plan-reading-types (9) and plan-reading-scale (9)' },
     { title: 'Chunk 3 (done 2026-11-15)', items: 12, scope: 'New plan sets retail-strip, office-floor and podium-mixed-use (parking level and section); plan-reading-buildings (12)' },
-    { title: 'Chunk 4', items: 18, scope: 'Takeoff attachment for grid questions (section 13.4); plan-reading-program (10 more) and plan-reading-bridge (8)' },
-    { title: 'Chunk 5', items: 1, scope: 'Capstone plan-reading-case; accessibility pass; set status to built' },
+    {
+      title: 'Chunk 4 (done 2026-11-15)',
+      items: 18,
+      scope:
+        'The plan-to-spreadsheet type plangrid (section 13.4), drawings on document reviews, a stairs parameter for spot-the-problem, an area schedule on the office floor; plan-reading-program (10 more) and plan-reading-bridge (8)',
+    },
+    {
+      title: 'Chunk 5',
+      items: 1,
+      scope: 'Ground floor and typical apartment floor for the podium set; a timer on plangrid; capstone plan-reading-case; accessibility pass (13.6); set status to built',
+    },
   ],
 };

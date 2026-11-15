@@ -1,0 +1,520 @@
+/**
+ * Plan Reading: building program math (subtopic plan-reading-program).
+ * The seed for this subtopic (floor efficiency from a plan) is in items.ts.
+ * Requirements such as parking ratios and FAR are GIVEN for fictional projects: Entitlements teaches where they come from.
+ */
+import { header, input, label, note, sheet, target, title, total } from '../../build';
+import { categoryItems } from '../define';
+
+const APARTMENTS: Record<string, number>[] = [{ bays: 5 }, { bays: 6, unit_width: 24 }, { bays: 7, unit_width: 24, unit_depth: 28, storeys: 5 }];
+const ONE_STAIR: Record<string, number>[] = [{ stairs: 1, bays: 5 }, { stairs: 1, bays: 6, unit_width: 24 }, { stairs: 1, bays: 7, unit_width: 24, unit_depth: 28 }];
+const GARAGE: Record<string, number>[] = [{ stalls_per_row: 16 }, { stalls_per_row: 12 }, { stalls_per_row: 18, stall_width: 8.5 }];
+
+const UNIT_TABLE = {
+  A6: header('Unit type', 'left'),
+  B6: header('Units per floor'),
+  C6: header('Size (SF)'),
+  D6: header('Net area per floor'),
+  A7: label('One-bed'),
+  B7: input(7, 'int', [5, 10, 1]),
+  C7: input(780, 'int', [650, 850, 10]),
+  A8: label('Two-bed'),
+  B8: input(2, 'int', [1, 4, 1]),
+  C8: input(1080, 'int', [950, 1250, 10]),
+};
+
+export const ITEMS = categoryItems('plan-reading', [
+  // ------------------------------------------------------------------ program sheet
+  {
+    id: 'plan-reading-program-grid-building-program',
+    type: 'grid',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Build a building program',
+    prompt:
+      'An architect has taken these counts and sizes off the plans of an apartment building (illustrative). Every residential floor has the same layout. Build the program summary, then check the parking against this fictional project’s requirement, which is given per unit with partial stalls rounded up.',
+    tags: ['building program', 'efficiency', 'unit mix', 'average unit size', 'parking', 'ROUNDUP'],
+    estMinutes: 8,
+    hints: [
+      'Work per floor first, then multiply by the number of floors.',
+      'Efficiency is net over gross. Average unit size is total net area over total units. A requirement rounds partial stalls up: ROUNDUP(x, 0).',
+      'Net area per floor = units x size for each type. Average size = total net area / total units.',
+    ],
+    workbook: {
+      sheets: [
+        sheet(
+          'Program',
+          {
+            A1: title('Building program (illustrative)'),
+            A3: label('Residential floors (every floor the same)'),
+            B3: input(4, 'int', [3, 6, 1]),
+            A4: label('Gross floor area per floor (SF)'),
+            B4: input(9900, 'int', [8000, 14000, 100]),
+            ...UNIT_TABLE,
+            D7: target('=B7*C7', 'int'),
+            D8: target('=B8*C8', 'int'),
+            A10: header('Program', 'left'),
+            A11: label('Units per floor'),
+            B11: target('=B7+B8', 'int'),
+            A12: label('Total units'),
+            B12: target('=B11*B3', 'int'),
+            A13: label('Gross floor area (SF)'),
+            B13: target('=B4*B3', 'int'),
+            A14: label('Net rentable area (SF)'),
+            B14: target('=(D7+D8)*B3', 'int'),
+            A15: label('Efficiency (net / gross)'),
+            B15: target('=B14/B13', 'pct1'),
+            A16: label('One-bed share of the units'),
+            B16: target('=B7/B11', 'pct1'),
+            A17: label('Average unit size (SF)'),
+            B17: target('=B14/B12', 'int'),
+            A19: header('Parking (requirement given for this fictional project)', 'left'),
+            A20: label('Stalls required per unit (given)'),
+            B20: input(1.2, 'num2', [0.8, 1.5, 0.05]),
+            A21: label('Stalls provided (counted on the plans)'),
+            B21: input(40, 'int', [25, 60, 1]),
+            A22: label('Stalls required'),
+            B22: target('=ROUNDUP(B12*B20,0)', 'int'),
+            A23: total('Surplus (shortfall) of stalls'),
+            B23: target('=B21-B22', 'int', { border: 'top' }),
+            A25: note('Illustrative figures. A negative surplus is a shortfall and shows in brackets.'),
+          },
+          { A: 300, B: 120, C: 100, D: 140 },
+        ),
+      ],
+    },
+    mistakes: [
+      { label: 'Average unit size is total net area divided by the number of units. A simple average of the two sizes acts as if there were as many two-beds as one-beds.', category: 'concept', cells: { B17: '=(C7+C8)/2' } },
+      { label: 'Efficiency is net over gross, so it is always below 100%.', category: 'concept', cells: { B15: '=B13/B14' } },
+      { label: 'A partial stall still has to be provided. Round up, or the project comes up one stall short.', category: 'function', cells: { B22: '=ROUNDDOWN(B12*B20,0)' } },
+      { label: 'That is one floor. Multiply by the number of floors.', category: 'omitted', cells: { B14: '=D7+D8' } },
+      { label: 'Unit mix is a share of the number of units, not of the floor area.', category: 'wrong-base', cells: { B16: '=D7/(D7+D8)' } },
+    ],
+    explanation:
+      'A program starts from one typical floor: units by type, their sizes, and the gross area of the floor. Everything else multiplies out. The two numbers people get wrong are average unit size (a weighted average: total net area over total units) and the parking requirement (partial stalls round up). Efficiency well below 100% is normal: corridors, stairs, elevators and walls are part of the gross area but earn no rent.',
+  },
+  {
+    id: 'plan-reading-program-grid-test-fit',
+    type: 'grid',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Test fit: how many floors fit?',
+    prompt:
+      'A test fit asks how much of what zoning allows a real floor plate can use. For this lot the limits are GIVEN (hypothetical): a maximum floor area ratio and a number of storeys under the height limit. The floor plate and units per floor come from the architect’s plan. Work out how many floors fit, the units, and how much of the allowed floor area the design uses.',
+    tags: ['test fit', 'FAR', 'MIN', 'ROUNDDOWN'],
+    estMinutes: 7,
+    hints: [
+      'There are two limits on the number of floors: the floor area the FAR allows, and the height limit.',
+      'A partial floor does not fit: round down. Both limits apply at once: the smaller governs.',
+      'Floors under the FAR = ROUNDDOWN(allowed area / plate, 0). Floors = MIN(height limit, that).',
+    ],
+    workbook: {
+      sheets: [
+        sheet(
+          'TestFit',
+          {
+            A1: title('Test fit (hypothetical limits, given)'),
+            A3: label('Lot area (SF)'),
+            B3: input(20000, 'int', [12000, 40000, 500]),
+            A4: label('Maximum FAR (given)'),
+            B4: input(2, 'num2', [1, 4, 0.25]),
+            A5: label('Storeys allowed by the height limit (given)'),
+            B5: input(5, 'int', [3, 8, 1]),
+            A6: label('Floor plate from the plan (SF)'),
+            B6: input(9900, 'int', [6000, 14000, 100]),
+            A7: label('Units per floor, counted on the plan'),
+            B7: input(9, 'int', [6, 14, 1]),
+            A9: header('Test fit', 'left'),
+            A10: label('Floor area allowed by the FAR (SF)'),
+            B10: target('=B3*B4', 'int'),
+            A11: label('Whole floors that fit in that area'),
+            B11: target('=ROUNDDOWN(B10/B6,0)', 'int'),
+            A12: label('Floors (within the height limit too)'),
+            B12: target('=MIN(B5,B11)', 'int'),
+            A13: label('Gross floor area of the design (SF)'),
+            B13: target('=B12*B6', 'int'),
+            A14: label('Units'),
+            B14: target('=B12*B7', 'int'),
+            A15: label('FAR used'),
+            B15: target('=B13/B3', 'num2'),
+            A16: label('Allowed floor area left unused (SF)'),
+            B16: target('=B10-B13', 'int'),
+            A18: note('Hypothetical limits for teaching. Real codes measure floor area and height in their own ways.'),
+          },
+          { A: 320, B: 120 },
+        ),
+      ],
+    },
+    edgeCases: [{ B5: 3 }, { B6: 8100 }],
+    mistakes: [
+      { label: 'A partial floor does not fit inside the allowed area. Round down, not to the nearest.', category: 'function', cells: { B11: '=ROUND(B10/B6,0)' } },
+      { label: 'Both limits apply at once, so the smaller number of floors governs: MIN, not MAX.', category: 'concept', cells: { B12: '=MAX(B5,B11)' } },
+      { label: 'Use the floors that meet BOTH limits (row 12), not just the FAR.', category: 'wrong-base', cells: { B14: '=B11*B7' } },
+      { label: 'That is the FAR allowed. FAR used is the floor area the design actually fits, divided by the lot.', category: 'concept', cells: { B15: '=B10/B3' } },
+    ],
+    explanation:
+      'The FAR gives a floor area; the floor plate turns it into whole floors; the height limit caps the floors. Whichever is smaller governs. Here the plate rarely divides evenly into the allowed area, so some allowed floor area goes unused: a different plate size, or a taller first floor of shops, is how architects try to capture it.',
+  },
+
+  // ------------------------------------------------------------------ error hunts
+  {
+    id: 'plan-reading-program-errorhunt-program-sheet',
+    type: 'errorhunt',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Fix a program sheet',
+    prompt:
+      'A colleague summarised one typical apartment floor from the plans (illustrative). Three formulas are wrong in ways that make the building look better than it is. Find and fix them.',
+    tags: ['building program', 'efficiency', 'average unit size', 'error hunt'],
+    estMinutes: 5,
+    hints: [
+      'Ask of each line: which areas count as rentable?',
+      'Look hard at net rentable area, efficiency and average unit size.',
+      'Net rentable is the units only. Efficiency is net over the whole gross plate. Average size is weighted by the number of units.',
+    ],
+    workbook: {
+      sheets: [
+        sheet(
+          'Program',
+          {
+            A1: title('Program check: one typical floor (illustrative)'),
+            A3: label('Residential floors'),
+            B3: input(4, 'int', [3, 6, 1]),
+            A4: label('Floor plate, gross (SF)'),
+            B4: input(9900, 'int', [8000, 14000, 100]),
+            A5: label('Corridor (SF)'),
+            B5: input(900, 'int', [600, 1200, 20]),
+            ...UNIT_TABLE,
+            D7: target('=B7*C7', 'int'),
+            D8: target('=B8*C8', 'int'),
+            A10: label('Units per floor'),
+            B10: target('=B7+B8', 'int'),
+            A11: label('Net rentable per floor (SF)'),
+            B11: target('=D7+D8', 'int'),
+            A12: label('Efficiency (net / gross)'),
+            B12: target('=B11/B4', 'pct1'),
+            A13: label('Average unit size (SF)'),
+            B13: target('=B11/B10', 'int'),
+            A14: label('Total units'),
+            B14: target('=B10*B3', 'int'),
+            A15: label('Total net rentable (SF)'),
+            B15: target('=B11*B3', 'int'),
+          },
+          { A: 260, B: 120, C: 100, D: 140 },
+        ),
+      ],
+    },
+    bugs: [
+      { label: 'The corridor is common area: nobody leases it. Net rentable is the apartments only.', category: 'concept', cells: { B11: '=D7+D8+B5' } },
+      { label: 'Efficiency compares net area with the WHOLE gross floor plate, corridor included.', category: 'wrong-base', cells: { B12: '=B11/(B4-B5)' } },
+      { label: 'Average unit size is net area divided by the number of units, not the average of the two sizes.', category: 'concept', cells: { B13: '=(C7+C8)/2' } },
+    ],
+    explanation:
+      'All three errors flatter the project: counting the corridor as rentable inflates the area that earns rent, shrinking the denominator inflates efficiency, and the simple average makes the units look bigger than they are because two-beds are few. Program summaries are worth checking line by line before they reach a pro forma.',
+  },
+  {
+    id: 'plan-reading-program-errorhunt-parking-table',
+    type: 'errorhunt',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Fix a parking table',
+    prompt:
+      'This parking check for a mixed-use building has three planted errors (illustrative figures; the requirements are given for this fictional project, with partial stalls rounded up). Find and fix them.',
+    tags: ['parking', 'ROUNDUP', 'error hunt'],
+    estMinutes: 5,
+    hints: [
+      'Check how the units are counted, how the requirements round, and the units of the retail ratio.',
+      'Every residential floor has units. Requirements round partial stalls up. The retail ratio is per 1,000 SF.',
+    ],
+    workbook: {
+      sheets: [
+        sheet(
+          'Parking',
+          {
+            A1: title('Parking check (illustrative; requirements given)'),
+            A3: label('Residential floors'),
+            B3: input(5, 'int', [3, 6, 1]),
+            A4: label('Units per floor'),
+            B4: input(9, 'int', [6, 14, 1]),
+            A5: label('Stalls required per unit (given)'),
+            B5: input(1.15, 'num2', [0.8, 1.5, 0.05]),
+            A6: label('Retail area (SF)'),
+            B6: input(6000, 'int', [3000, 12000, 500]),
+            A7: label('Retail stalls required per 1,000 SF (given)'),
+            B7: input(2.5, 'num1', [1.5, 4, 0.5]),
+            A8: label('Stalls provided (counted on the plans)'),
+            B8: input(62, 'int', [40, 90, 1]),
+            A10: header('Check', 'left'),
+            A11: label('Units'),
+            B11: target('=B3*B4', 'int'),
+            A12: label('Residential stalls required'),
+            B12: target('=ROUNDUP(B11*B5,0)', 'int'),
+            A13: label('Retail stalls required'),
+            B13: target('=ROUNDUP(B6/1000*B7,0)', 'int'),
+            A14: label('Total stalls required'),
+            B14: target('=B12+B13', 'int'),
+            A15: total('Surplus (shortfall)'),
+            B15: target('=B8-B14', 'int', { border: 'top' }),
+            A16: label('Stalls provided per unit'),
+            B16: target('=B8/B11', 'num2'),
+          },
+          { A: 300, B: 120 },
+        ),
+      ],
+    },
+    bugs: [
+      { label: 'Every residential floor has units: floors times units per floor, not one floor fewer.', category: 'omitted', cells: { B11: '=B4*(B3-1)' } },
+      { label: 'A partial stall still has to be provided. Round the requirement up.', category: 'function', cells: { B12: '=ROUNDDOWN(B11*B5,0)' } },
+      { label: 'The retail rate is per 1,000 SF: divide the retail area by 1,000 first.', category: 'units', cells: { B13: '=B6*B7' } },
+    ],
+    explanation:
+      'Parking checks fail in small ways: a floor of units left out, a requirement rounded the wrong way, a ratio applied to the wrong unit of area. Each one changes the stall count, and stalls in an underground garage are among the most expensive things a developer builds.',
+  },
+
+  // ------------------------------------------------------------------ from the drawing
+  {
+    id: 'plan-reading-program-plangrid-parking-check',
+    type: 'plangrid',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Count the garage, then check the requirement',
+    prompt:
+      'Take the parking off the P1 plan (A-100): count the stalls and the accessible stalls, and work out the garage’s area from its overall dimensions. Then check the parking against this fictional project’s requirement, which is given per apartment with partial stalls rounded up.',
+    tags: ['parking', 'takeoff', 'stall count', 'ROUNDUP'],
+    estMinutes: 8,
+    hints: [
+      'Count one row of stalls, then the rows. The hatched spaces beside accessible stalls are not stalls.',
+      'The garage area is its overall length times its overall width, from the outermost dimension strings.',
+      'Surplus = stalls provided - stalls required. A negative surplus is a shortfall.',
+    ],
+    figure: { set: 'podium-mixed-use', variants: GARAGE, sheet: 'A-100' },
+    workbook: {
+      sheets: [
+        sheet(
+          'Parking',
+          {
+            A1: title('Parking check (requirement given for this fictional project)'),
+            A3: label('Apartments in the building'),
+            B3: input(64, 'int', [40, 90, 1]),
+            A4: label('Stalls required per apartment (given)'),
+            B4: input(1.15, 'num2', [0.75, 1.5, 0.05]),
+            A6: header('Taken off the drawing (A-100)', 'left'),
+            A7: label('Stalls on parking level P1'),
+            A8: label('Accessible stalls on P1'),
+            A9: label('Garage area (SF): overall length x overall width'),
+            A11: header('Check', 'left'),
+            A12: label('Stalls required'),
+            B12: target('=ROUNDUP(B3*B4,0)', 'int'),
+            A13: total('Surplus (shortfall)'),
+            B13: target('=B7-B12', 'int', { border: 'top' }),
+            A14: label('Stalls per apartment provided'),
+            B14: target('=B7/B3', 'num2'),
+            A15: label('Accessible share of the stalls'),
+            B15: target('=B8/B7', 'pct1'),
+            A16: label('Garage area per stall (SF)'),
+            B16: target('=B9/B7', 'int'),
+          },
+          { A: 330, B: 120 },
+        ),
+      ],
+    },
+    takeoffs: [
+      {
+        cell: 'B7',
+        label: 'Stalls on P1',
+        answer: '=total_stalls',
+        format: 'int',
+        tolerance: { abs: 0.4 },
+        vary: { min: 40, max: 90, step: 1 },
+        mistakes: [
+          { formula: '=standard_stalls', label: 'You left out the accessible stalls (the ones with the wheelchair symbol). They are parking stalls too.', category: 'omitted' },
+          { formula: '=modules*2*stalls_per_row', label: 'The hatched space beside each accessible stall is an access aisle, kept clear for getting in and out. Nobody can park there.', category: 'double-count' },
+          { formula: '=total_stalls/2', label: 'That is half the garage. There are two parking modules, each with two rows of stalls.', category: 'omitted' },
+        ],
+      },
+      {
+        cell: 'B8',
+        label: 'Accessible stalls on P1',
+        answer: '=accessible_stalls',
+        format: 'int',
+        tolerance: { abs: 0.4 },
+        vary: { min: 1, max: 4, step: 1 },
+        mistakes: [
+          { formula: '=2*accessible_stalls', label: 'Each hatched access aisle belongs to one accessible stall. Count the stalls with the wheelchair symbol, not the hatching as well.', category: 'double-count' },
+        ],
+      },
+      {
+        cell: 'B9',
+        label: 'Garage area (SF)',
+        answer: '=garage_sf',
+        format: 'int',
+        mistakes: [
+          { formula: '=row_length*garage_width', label: 'That uses only the length of the rows of stalls. The garage also holds the ramp at one end and the cores at the other: use the overall dimensions.', category: 'wrong-base' },
+          { formula: '=2*(garage_length+garage_width)', label: 'That is the distance around the garage (its perimeter), not its area.', category: 'concept' },
+        ],
+      },
+    ],
+    mistakes: [
+      { label: 'A partial stall still has to be provided. Round the requirement up.', category: 'function', cells: { B12: '=ROUNDDOWN(B3*B4,0)' } },
+      { label: 'Surplus is provided minus required, so a shortfall shows as a negative number.', category: 'sign', cells: { B13: '=B12-B7' } },
+      { label: 'Stalls per apartment is stalls divided by apartments.', category: 'concept', cells: { B14: '=B3/B7' } },
+      { label: 'The question is what share of the STALLS are accessible: divide by stalls, not apartments.', category: 'wrong-base', cells: { B15: '=B8/B3' } },
+    ],
+    explanation:
+      'The level has {total_stalls} stalls, {accessible_stalls} of them accessible, in {garage_sf|int} SF: about {sf_per_stall|int} SF of garage per stall once aisles, the ramp and the cores are counted. Comparing that with the requirement is a five-minute check that can save a redesign: if the count comes up short, the fix (another level, fewer units, a smaller stall) changes the budget.',
+  },
+  {
+    id: 'plan-reading-program-docreview-data-table',
+    type: 'docreview',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Check a project data table against the plans',
+    prompt:
+      'The architect’s cover sheet includes this project data table. Check it against the drawings above (start with the floor plan, A-102; every residential floor has the same layout) and flag every line that is wrong.',
+    tags: ['project data', 'building program', 'efficiency', 'average unit size'],
+    estMinutes: 6,
+    hints: [
+      'Count the units on A-102 and compare with the table. Then check anything calculated from that count.',
+      'Net rentable area is the apartments only. Average unit size is total net area over the number of units.',
+      'Three problems: a count, an area (with the ratio built on it) and an average.',
+    ],
+    figure: { set: 'mf-double-loaded', variants: APARTMENTS, sheet: 'A-102' },
+    document: {
+      kind: 'Project data table',
+      title: 'Linda Vista Flats: project data (from the cover sheet)',
+      columns: ['Item', 'Value', 'Note'],
+      lines: [
+        { id: 'lot', text: 'Lot area', cells: ['{lot_sf|int} SF', 'Per survey'] },
+        { id: 'storeys', text: 'Residential storeys', cells: ['{storeys}', 'All floors typical'] },
+        { id: 'height', text: 'Building height to the roof', cells: ['{building_height} ft', 'See A-301'] },
+        { id: 'units-floor', text: 'Units per typical floor', cells: ['{=unit_count+1}', 'See A-102'] },
+        { id: 'mix', text: 'Unit mix per floor', cells: ['{one_bed_count} one-bed, {two_bed_count} two-bed', ''] },
+        { id: 'total-units', text: 'Total units', cells: ['{=storeys*(unit_count+1)}', 'Storeys x units per floor'] },
+        { id: 'gsf-floor', text: 'Gross floor area per floor', cells: ['{floor_gsf|int} SF', 'To exterior wall centrelines'] },
+        { id: 'gsf-total', text: 'Gross floor area, total', cells: ['{total_gsf|int} SF', ''] },
+        { id: 'nra', text: 'Net rentable area, total', cells: ['{=storeys*(rentable_sf+corridor_sf)|int} SF', 'Units and corridors'] },
+        { id: 'efficiency', text: 'Efficiency', cells: ['{=(rentable_sf+corridor_sf)/floor_gsf|pct1}', 'Net / gross'] },
+        { id: 'average', text: 'Average unit size', cells: ['{=(one_bed_sf+two_bed_sf)/2|int} SF', ''] },
+        { id: 'setback', text: 'Front setback', cells: ['{front_setback} ft', 'See C-101'] },
+        { id: 'floor-height', text: 'Floor-to-floor height', cells: ['{floor_to_floor} ft', 'See A-301'] },
+      ],
+    },
+    issues: [
+      {
+        lines: ['units-floor', 'total-units'],
+        label: 'A-102 shows {unit_count} units per floor ({one_bed_count} one-bed and {two_bed_count} two-bed), not {=unit_count+1}. The total inherits the error: it should be {total_units}.',
+        category: 'arithmetic',
+      },
+      {
+        lines: ['nra', 'efficiency'],
+        label: 'The corridor is common area, not rentable. Net rentable is {=storeys*rentable_sf|int} SF and efficiency is {=rentable_sf/floor_gsf|pct1}.',
+        category: 'concept',
+      },
+      {
+        lines: ['average'],
+        label: 'That is a simple average of the two unit sizes. Weighted by the number of each, the average unit is {avg_unit_sf|int} SF.',
+        category: 'concept',
+      },
+    ],
+    explanation:
+      'Data tables are typed by hand and drift from the drawings as the design changes. A count that is off by one, a corridor counted as rentable, or an unweighted average each make the project look better than it is, and every number that is calculated from them carries the error along. The drawings are the source: check the table against them before you use it.',
+  },
+  {
+    id: 'plan-reading-program-locate-dead-end',
+    type: 'plan',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Spot the problem on a floor plan',
+    prompt: 'This is the latest version of an apartment floor plan. Compared with the earlier one, it has a serious problem for the people who will live here. Click where the problem is.',
+    tags: ['egress', 'spot the problem', 'stairs', 'multifamily'],
+    estMinutes: 2,
+    hints: ['Imagine a fire near the middle of the corridor. How does everyone get out?', 'Count the ways out of the corridor.', 'Look at the east end of the corridor.'],
+    plan: { set: 'mf-double-loaded', variants: ONE_STAIR, sheet: 'A-102' },
+    task: {
+      kind: 'locate',
+      targets: ['egress-problem', 'stair-2-storage'],
+      decoys: [
+        { match: 'stair', why: 'That stair is fine. The problem is that it is the only one: people at the far end of the corridor have no second way out.', category: 'concept' },
+        { match: 'elevator', why: 'The elevator is not the problem. In an emergency people leave on foot: count the stairs.', category: 'concept' },
+        { match: 'corridor', why: 'Close: the problem is in the corridor, but at its east end, where it stops at a wall and a storage room instead of a stair.', category: 'concept' },
+        { match: 'unit', why: 'The apartments are not the problem. Look at how people get out of the corridor.', category: 'concept' },
+      ],
+    },
+    explanation:
+      'This floor has only one stair. Anyone at the east end of the corridor has a single way out, past every other apartment. Apartment floors served by a corridor normally need two separate ways out, which is why the earlier version had a stair at each end. When a revised plan gains space, check what it gave up before the extra space goes into a pro forma.',
+  },
+
+  // ------------------------------------------------------------------ concepts and arithmetic
+  {
+    id: 'plan-reading-program-mcq-average-unit-size',
+    type: 'mcq',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Average unit size',
+    prompt: 'A typical floor has {ones} one-beds of {one_sf|int} SF each and {twos} two-beds of {two_sf|int} SF each. What is the average unit size?',
+    tags: ['average unit size', 'unit mix', 'weighted average'],
+    estMinutes: 1.5,
+    hints: ['An average over units should count each unit once.', 'Total net area divided by the number of units.'],
+    vars: [
+      { name: 'ones', min: 5, max: 10, step: 1 },
+      { name: 'one_sf', choices: [700, 750, 800] },
+      { name: 'twos', min: 1, max: 4, step: 1 },
+      { name: 'two_sf', choices: [1000, 1080, 1150] },
+    ],
+    correct: { formula: '=(ones*one_sf+twos*two_sf)/(ones+twos)' },
+    distractors: [
+      { formula: '=(one_sf+two_sf)/2', why: 'That averages the two sizes as if there were as many two-beds as one-beds. Weight each size by its number of units.', category: 'concept' },
+      { formula: '=ones*one_sf+twos*two_sf', why: 'That is the total net area of the floor. Divide it by the number of units.', category: 'omitted' },
+      { formula: '=(ones*one_sf+twos*two_sf)/2', why: 'Divide by the number of UNITS, not the number of unit types.', category: 'wrong-base' },
+    ],
+    format: 'int',
+    explanation:
+      'Total net area = {=ones*one_sf+twos*two_sf|int} SF over {=ones+twos} units = {=(ones*one_sf+twos*two_sf)/(ones+twos)|int} SF. The simple average of the two sizes, {=(one_sf+two_sf)/2|int} SF, treats the {twos} two-beds as if they were as common as the {ones} one-beds.',
+  },
+  {
+    id: 'plan-reading-program-numeric-tenant-rentable',
+    type: 'numeric',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Rentable area from usable area',
+    prompt: 'An office tenant’s suite measures {usable|int} SF of usable area. The floor’s load factor (rentable / usable) is {lf|num2}. On how many rentable square feet will the tenant pay rent?',
+    tags: ['load factor', 'rentable area', 'usable area', 'office'],
+    estMinutes: 1.5,
+    hints: ['The load factor turns usable area into rentable area.', 'Rentable is the larger of the two.'],
+    vars: [
+      { name: 'usable', min: 3000, max: 12000, step: 250, format: 'int' },
+      { name: 'lf', choices: [1.12, 1.15, 1.18, 1.2], format: 'num2' },
+    ],
+    answer: '=usable*lf',
+    format: 'int',
+    unit: 'rentable SF',
+    mistakes: [
+      { formula: '=usable/lf', label: 'Rentable area is MORE than usable area: multiply by the load factor.', category: 'concept' },
+      { formula: '=usable*(lf-1)', label: 'That is only the tenant’s share of the common areas. Add it to the usable area, or multiply usable by the load factor.', category: 'omitted' },
+    ],
+    explanation:
+      '{usable|int} x {lf|num2} = {=usable*lf|int} rentable SF. The extra {=usable*(lf-1)|int} SF is the tenant’s share of the corridors, lobby and restrooms on the floor.',
+  },
+  {
+    id: 'plan-reading-program-explain-gross-rentable',
+    type: 'explain',
+    level: 2,
+    topic: 'plan-reading-program',
+    title: 'Why gross area is not rentable area',
+    prompt:
+      'A developer says: “The building is 100,000 square feet, so at $3.00 per square foot per month the rent roll is $300,000 a month.” Explain what is wrong with this, using what you know about building programs.',
+    tags: ['gross area', 'rentable area', 'efficiency'],
+    estMinutes: 3,
+    hints: ['Which area is rent charged on?', 'What is in the 100,000 SF that nobody leases?'],
+    rubric: [
+      'Rent is charged on rentable (net) area, not gross floor area',
+      'Gross area includes corridors, stairs, elevators, walls and service rooms that nobody leases',
+      'Efficiency (net divided by gross) is well below 100%, so the rentable area is smaller than 100,000 SF',
+      'The fix: take the rentable area from the program or a takeoff of the plans, then apply the rent',
+    ],
+    model:
+      'Rent is paid on rentable area, and 100,000 SF is the gross area of the whole building. Corridors, stairs, elevators, walls and service rooms are part of the gross but are never leased, so the rentable area is only the gross times the building’s efficiency. The right starting point is the net rentable area from the program or from a takeoff of the plans.',
+    trap: 'Weak answers mention vacancy and stop. Vacancy matters too, but the bigger error is charging rent on space that can never be leased.',
+  },
+]);
+

@@ -31,6 +31,7 @@ src/plans/                    generated drawings (plan-reading)
 src/components/plan/          the plan viewer
 src/components/questions/CategoryQuestions.tsx   plan, document review and scenario judgment question screens
 src/grading/category.ts       grading for those three types
+src/components/questions/PlanGridQuestion.tsx    the plan-to-spreadsheet screen; src/grading/plangrid.ts grades it
 src/leases/engine.ts          the lease engine (tenant inputs to a lease-by-lease cash flow)
 src/components/leases/        the lease simulator screen; src/grading/leases.ts grades its questions
 src/learn/category.ts         per-category progress and status
@@ -94,14 +95,15 @@ These restate `CLAUDE.md` for categories. The tests enforce most of them.
 
 ## The question types available
 
-All 14 core types (see `CLAUDE.md`), plus four built for categories:
+All 14 core types (see `CLAUDE.md`), plus five built for categories:
 
 | Type | What the student does | Key fields | Scoring |
 |---|---|---|---|
 | `judgment` | Chooses the best response to a scenario | `options[{ text, rating: 'best' \| 'acceptable' \| 'poor', why, category? }]` (3 to 5, exactly one `best`), `explanation`, optional `vars` | best 1, acceptable 0.5, poor 0. Every option's `why` is shown afterwards. |
-| `docreview` | Flags the lines of a document that contain a problem | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]` (1 to 5), `vars`, `explanation` | (issues found - wrong flags) / issues, floor 0. Needs at least as many clean lines as issues. Headings and totals cannot be flagged. |
+| `docreview` | Flags the lines of a document that contain a problem | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]` (1 to 5), `vars`, `explanation`; optional `figure { set, variants[], sheet }` shows a drawing above the document, and the text can then use the drawing's facts | (issues found - wrong flags) / issues, floor 0. Needs at least as many clean lines as issues. Headings and totals cannot be flagged. |
 | `plan` | Clicks, measures or names something on a generated drawing (four plan sets: apartments, retail, office, podium), or says which sheet to open | `plan { set, variants[], sheet }`, `task` of kind `locate` (targets, decoys, `pick`, `onSheet`), `measure` (answer formula over plan facts, mistakes, tool), `identify` (highlight, correct, distractors) or `navigate` (correctSheet, distractorSheets) | right or wrong; measure tasks use a tolerance; a multi-pick locate scores (right - wrong) / picks |
 | `leasesim` | Reads, corrects or predicts with the lease-by-lease simulator | `scenario`, `variants`, `editable`, `task` of kind `read` (answer formula over report facts, mistakes), `configure` (target inputs, checks) or `shock` (change, output, band, trap) | read: right or wrong; configure: share of checked report lines that match; shock: half for direction, full with the size |
+| `plangrid` | Reads numbers off a drawing into a spreadsheet, then builds formulas on them | everything a `grid` has, plus `figure { set, variants[], sheet }` and `takeoffs[{ cell, label, answer, mistakes }]` (1 to 8; `answer` is a formula over the plan's facts) | each takeoff is checked against the drawing; formula cells get the full grid grading as if every takeoff were right, so a miscount costs only its own cell. Every cell counts equally |
 
 A spec may ask for a NEW type (for example `leasesim` in the ARGUS spec). Follow "Adding a new question type" in `CLAUDE.md`, add the label to `ALL_TYPE_LABELS` only, and add a section for the type to `tests/category-content.test.ts` modelled on the `plan` section.
 
@@ -161,8 +163,8 @@ The owner asked (2026-11-14) for the hardest work to be done first, while the Fa
 | 2 (done 2026-11-15) | `plan-reading` chunk 1: viewer extensions, site plan and section sheets, 19 questions | Every later plan-reading chunk builds on these viewer features |
 | 3 (done 2026-11-15) | `plan-reading` chunk 2: roof plan, elevation and ceiling plan sheets, 18 questions | New drawing generators |
 | 4 (done 2026-11-15) | `plan-reading` chunk 3: retail, office and mixed-use podium plan sets, 12 questions | The largest drawing-generation job in the app |
-| 5 | `plan-reading` chunk 4: takeoff attachment for grid questions, 18 questions | Touches the grid types additively; the existing grid tests must pass untouched |
-| 6 | `plan-reading` chunk 5: capstone and accessibility pass, 1 question | Finishes the category |
+| 5 (done 2026-11-15) | `plan-reading` chunk 4: the plan-to-spreadsheet type (`plangrid`), 18 questions | Built as its own type on top of the unchanged grid grader, so the core sheet types were not touched |
+| 6 | `plan-reading` chunk 5: ground floor and typical floor for the podium set, a timer on `plangrid`, the capstone and the accessibility pass, 1 question | Finishes the category. Section 13.3 of its spec lists exactly what is left |
 
 ### Phase B: better with Fable, workable with Opus 5.5 at high effort
 

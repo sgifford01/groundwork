@@ -18,7 +18,9 @@
  *   rentable  = the whole plate less vertical penetrations (stairs, elevators, shaft)
  *   load factor = rentable / usable
  *
- * Roles: suite corridor core stair elevator lobby restroom mechanical column door curtain-wall
+ * The sheet carries an area schedule (usable area by suite, total, and floor openings), so these can be taken off.
+ *
+ * Roles: suite corridor core stair elevator lobby restroom mechanical column door curtain-wall schedule
  *        grid-bubble dimension drawing-title scale-bar north-arrow title-block sheet-number note border
  */
 import { border, dimension, door, drawingTitle, elevator, gridBubble, hitRect, line, northArrow, opening, rect, scaleBar, stair, text, titleBlock } from './draw';
@@ -48,12 +50,22 @@ function layout(bays: number, spacing: number, lease: number, coreDepth: number)
   return { L, D: 2 * lease + coreDepth, coreX, coreLength, a: coreX - CORRIDOR, b: coreX + coreLength + CORRIDOR };
 }
 
+/** Areas of the floor, used both by the area schedule on the sheet and by the facts. */
+function areasOf(bays: number, spacing: number, lease: number, coreDepth: number) {
+  const { L, D, a, b } = layout(bays, spacing, lease, coreDepth);
+  const endSuite = a * D; // suites 401 and 403 are the same size
+  const midSuite = (b - a) * (lease - CORRIDOR); // suites 402 and 404
+  const usable = 2 * endSuite + 2 * midSuite;
+  const penetrations = 2 * STAIR_W * coreDepth + 4 * CAB * CAB + SHAFT_W * coreDepth;
+  return { endSuite, midSuite, usable, penetrations, rentable: L * D - penetrations };
+}
+
 function floorPlate(bays: number, spacing: number, lease: number, coreDepth: number): PlanSheet {
   const k = 1;
   const { L, D, coreX, coreLength, a, b } = layout(bays, spacing, lease, coreDepth);
   const coreY = lease;
   const coreEnd = coreX + coreLength;
-  const bounds = { x: -36, y: -36, w: L + 36 + 74, h: D + 36 + 36 };
+  const bounds = { x: -36, y: -36, w: L + 36 + 74, h: D + 36 + 58 };
   const els: PlanElement[] = [border(bounds, k)];
 
   // ---- the four suites ----
@@ -182,6 +194,30 @@ function floorPlate(bays: number, spacing: number, lease: number, coreDepth: num
     name: 'General note',
     marks: [text(0, D + 27, 'NOTE: DIMENSIONS ARE TO WALL CENTRELINES. THE CORRIDOR AROUND THE CORE IS 5 FT WIDE. COLUMNS ARE ON THE GRID LINES.', 1.2)],
   });
+  // ---- area schedule, as architects put on their sheets ----
+  const ar = areasOf(bays, spacing, lease, coreDepth);
+  const sf = (n: number) => `${Math.round(n).toLocaleString('en-US')} SF`;
+  const rows: [string, string][] = [
+    ['SUITE 401', sf(ar.endSuite)],
+    ['SUITE 402', sf(ar.midSuite)],
+    ['SUITE 403', sf(ar.endSuite)],
+    ['SUITE 404', sf(ar.midSuite)],
+    ['TOTAL USABLE', sf(ar.usable)],
+    ['FLOOR OPENINGS (STAIRS, ELEVATORS, SHAFT)', sf(ar.penetrations)],
+  ];
+  const sy = D + 33;
+  els.push({
+    id: 'area-schedule',
+    role: 'schedule',
+    name: 'Area schedule (usable area by suite, and floor openings)',
+    marks: [
+      text(0, sy, 'AREA SCHEDULE: USABLE AREA BY SUITE', 1.4, { bold: true }),
+      line(0, sy + 0.8, 72, sy + 0.8, 'medium'),
+      ...rows.flatMap(([label, value], i) => [text(0, sy + 3.4 + i * 2.6, label, 1.25, { bold: i >= 4 }), text(72, sy + 3.4 + i * 2.6, value, 1.25, { anchor: 'end', bold: i >= 4 })]),
+      line(0, sy + 3.4 + 3 * 2.6 + 1, 72, sy + 3.4 + 3 * 2.6 + 1, 'thin'),
+    ],
+    hit: hitRect(0, sy - 2, 72, 3.4 + 6 * 2.6),
+  });
   els.push(...titleBlock(bounds, { project: PROJECT, title: 'LEVEL 4 FLOOR PLAN', sheet: 'A-104', scale: '1/8" = 1\'-0"' }, k));
 
   const snaps: Pt[] = [];
@@ -195,15 +231,11 @@ function build(params: Record<string, number>): PlanSet {
   const spacing = params.column_spacing;
   const lease = params.lease_depth;
   const coreDepth = params.core_depth;
-  const { L, D, coreLength, a, b } = layout(bays, spacing, lease, coreDepth);
+  const { L, D, coreLength } = layout(bays, spacing, lease, coreDepth);
   const plan = floorPlate(bays, spacing, lease, coreDepth);
   const sheets = [coverSheet([{ id: 'G-001', title: 'Cover sheet and sheet index' }, plan], 'A MULTI-TENANT OFFICE BUILDING (ILLUSTRATIVE)', PROJECT), plan];
 
-  const endSuite = a * D; // suites 401 and 403 are the same size
-  const midSuite = (b - a) * (lease - CORRIDOR); // suites 402 and 404
-  const usable = 2 * endSuite + 2 * midSuite;
-  const penetrations = 2 * STAIR_W * coreDepth + 4 * CAB * CAB + SHAFT_W * coreDepth;
-  const rentable = L * D - penetrations;
+  const { endSuite, midSuite, usable, penetrations, rentable } = areasOf(bays, spacing, lease, coreDepth);
   return {
     id: 'office-floor',
     title: 'Torrey Ridge Office: typical floor (illustrative)',

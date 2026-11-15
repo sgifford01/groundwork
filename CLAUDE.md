@@ -36,7 +36,7 @@ On screen the tiers are called Core, Large, Medium and Small (`TIER_LABELS`); th
 
 **To build a category, follow `docs/BUILDING_CATEGORIES.md`** and the category's **`src/content/categories/<slug>/BUILD_SPEC.md`** (16 sections; a ready-to-paste BUILD PROMPT is at the bottom). Each folder also holds `spec-data.ts` (worked examples, type mix and chunk plan as data: run `npm run sync-specs` after editing it or the registry) and `items.ts` (two seed questions that set the quality bar). New questions go in `items-<subtopic>.ts` files, which are picked up automatically.
 
-Category questions use the same schema as the core, plus: `category` (stamped by `categoryItems('<slug>', [...])`), `verifiedAsOf` + `sourceUrl` for any real-world rule, `noLegalClaim` for hypothetical arithmetic in a category that needs verification, and four extra types: `judgment`, `docreview`, `plan`, `leasesim`. Ids start with the slug; `topic` is a subtopic id; `level` is 1 (Foundations), 2 (Applied) or 3 (Case). Categories are not level-gated. Each concept is owned by one category (section 12 of each spec); new categories may overlap the Excel course but not each other.
+Category questions use the same schema as the core, plus: `category` (stamped by `categoryItems('<slug>', [...])`), `verifiedAsOf` + `sourceUrl` for any real-world rule, `noLegalClaim` for hypothetical arithmetic in a category that needs verification, and five extra types: `judgment`, `docreview`, `plan`, `leasesim`, `plangrid`. Ids start with the slug; `topic` is a subtopic id; `level` is 1 (Foundations), 2 (Applied) or 3 (Case). Categories are not level-gated. Each concept is owned by one category (section 12 of each spec); new categories may overlap the Excel course but not each other.
 
 **No law, fee, tax rate or market level is written from memory.** Verify at the primary source, date it and cite it, or make it an explicit hypothetical.
 
@@ -62,7 +62,8 @@ src/
                formulaAssist.ts (which suggestions / argument template to show while typing)
   grading/     gridGrader.ts (sheet grading), simple.ts (numeric + multiple choice),
                advanced.ts (error hunt, guided case, predict, estimate, ordering, go/no-go, shortcuts)
-               category.ts (scenario judgment, document review, plan reading), leases.ts (lease simulator)
+               category.ts (scenario judgment, document review, plan reading), leases.ts (lease simulator),
+               plangrid.ts (plan to spreadsheet: reuses gradeGrid unchanged)
   content/     schema.ts (THE question schema), topics.ts (core levels + topics), build.ts (helpers),
                functions.ts (THE function catalog), items/*.ts (the CORE questions: protected),
                index.ts (ALL_ITEMS = core; CATEGORY_ITEMS; EVERY_ITEM; itemsOfCategory)
@@ -78,7 +79,7 @@ src/
   components/  grid/Grid.tsx (the spreadsheet), questions/* (one component per type), ItemRunner.tsx, charts.tsx,
                FormulaAssist.tsx (the as-you-type help popup, shared by the grid, the formula box and the guide)
                plan/PlanViewer.tsx (pan, zoom, measure, hotspots), leases/LeaseSimulator.tsx, questions/CategoryQuestions.tsx,
-               questions/LeaseQuestion.tsx, CategoryBits.tsx
+               questions/LeaseQuestion.tsx, questions/PlanGridQuestion.tsx, CategoryBits.tsx
   pages/       Home (category tiles), CategoryPage (landing page; shows Dashboard for the core), Dashboard (core),
                Practice, SessionPage, Library, Functions, Mistakes, Settings
 scripts/       run.mjs (runs a TS script through Vite), category-status.ts, sync-specs.ts
@@ -201,11 +202,12 @@ To add a function: add an entry with `name`, `category`, `summary`, `detail`, `a
 | Type | Key fields | Notes |
 |---|---|---|
 | `judgment` | `options[{ text, rating, why, category? }]` (3 to 5), `explanation`, optional `vars` | Exactly one `best` (1.0); `acceptable` scores 0.5; `poor` 0. Every `why` is shown after grading. |
-| `docreview` | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]`, `vars` | Score = (issues found - wrong flags) / issues. At least as many clean flaggable lines as issues. Text takes `{templates}`. |
+| `docreview` | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]`, `vars`, optional `figure { set, variants, sheet }` | Score = (issues found - wrong flags) / issues. At least as many clean flaggable lines as issues. Text takes `{templates}`. With a `figure`, the drawing is shown above the document and its facts can be used in the text and in `vars` formulas. |
 | `plan` | `plan { set, variants, sheet }`, `task` (`locate` / `measure` / `identify` / `navigate`), `explanation` | Answers are formulas over the plan's `facts`. Every variant must be inside the plan set's limits. Text takes `{fact_name|format}`. `locate` takes `pick` (several clicks) and `onSheet`; `measure` has an `area` tool. Element ids repeat between sheets, so clicks are keyed `"<sheet>/<id>"`. |
 | `leasesim` | `scenario`, `variants`, `editable`, `task` (`read` / `configure` / `shock`), `explanation` | The lease-by-lease simulator. Answers are formulas over the report's facts (`noi_year_three`). Inputs are addressed by path (`mla.tiNew`, `tenants.suite-200.baseRent`). Graded in `grading/leases.ts`; the engine is `src/leases/engine.ts`. |
+| `plangrid` | everything a `grid` has, plus `figure { set, variants, sheet }` and `takeoffs[{ cell, label, answer, format, tolerance, vary?, mistakes }]` (1 to 8) | Plan to spreadsheet: a drawing above a sheet. Takeoff cells are typed from the drawing and checked against `answer` (a formula over the plan's facts); counts use `tolerance: { abs: 0.4 }`. Formula cells are graded by the unchanged `gradeGrid` with every takeoff set to the right number, so a miscount costs only its own cell. Graded in `grading/plangrid.ts`. No .xlsx round trip. |
 
-Grading for these is in `grading/category.ts`; they are in `ALL_TYPE_LABELS` (use that map for display) and never in `ITEM_TYPE_LABELS`.
+Grading for the first three is in `grading/category.ts`. All five are in `ALL_TYPE_LABELS` (use that map for display) and never in `ITEM_TYPE_LABELS`.
 
 ## Engine facts (HyperFormula 3.x, wrapped in `engine/workbook.ts`)
 
@@ -257,6 +259,8 @@ Multi-sheet tasks work (sheet tabs, green cross-sheet links, `sheet:` on a mista
 **Plan Reading chunk 2 (built 2026-11-15):** roof plan (A-103), south elevation (A-201) and unit reflected ceiling plan (A-402), and 18 questions (drawing types, scales and measuring). Plan Reading is at 39 of 70.
 
 **Plan Reading chunk 3 (built 2026-11-15):** plan sets for a row of shops, an office floor and a mixed-use podium (parking level and section), and 12 questions on reading building types. Plan Reading is at 51 of 70. Category hints are shown exactly as written, so they must not contain `{placeholders}` (tested).
+
+**Plan Reading chunk 4 (built 2026-11-15):** the `plangrid` type (plan to spreadsheet), drawings on document reviews (`figure`), a `stairs` parameter on the apartment set (one stair: a dead-end corridor to spot), an area schedule on the office floor, and 18 questions (building program math and plan to pro forma). The core grid types were not changed: `plangrid` is a separate type that reuses the grid grader. Plan Reading is at 69 of 70; chunk 5 (the capstone) is next, and section 13.3 of its spec lists what it needs.
 
 **Not built yet:** most of the content of the eight categories. Run `npm run category-status` for the current counts, and keep each category's `status` in the registry up to date (`planned` → `in-progress` → `built`).
 

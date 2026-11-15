@@ -25,6 +25,7 @@
  *
  * Roles used by elements (questions match on these or on an element id):
  *   unit corridor stair elevator lobby core trash electrical mechanical door window exterior-wall
+ *   storage egress-problem (only when the stairs parameter is 1)
  *   grid-bubble dimension detail-callout section-marker revision-cloud revision-delta revision-list
  *   drawing-title scale-bar north-arrow title-block sheet-number note border
  *   room partition tub toilet lavatory counter refrigerator range sheet-reference
@@ -63,7 +64,7 @@ import { feetInches, type PlanElement, type PlanSet, type PlanSetDef, type PlanS
 
 const PROJECT = 'LINDA VISTA FLATS';
 
-function floorPlan(n: number, uw: number, ud: number, cw: number, sw: number): PlanSheet {
+function floorPlan(n: number, uw: number, ud: number, cw: number, sw: number, stairs: number): PlanSheet {
   const k = 1;
   const L = 2 * sw + n * uw;
   const D = 2 * ud + cw;
@@ -112,7 +113,27 @@ function floorPlan(n: number, uw: number, ud: number, cw: number, sw: number): P
 
   // ---- stairs (north row, both ends) ----
   els.push(stair('stair-1', 'Stair 1', 0, 0, sw, ud, k));
-  els.push(stair('stair-2', 'Stair 2', L - sw, 0, sw, ud, k));
+  if (stairs >= 2) {
+    els.push(stair('stair-2', 'Stair 2', L - sw, 0, sw, ud, k));
+  } else {
+    // A "spot the problem" variant: the second stair has become a storage room, so the corridor dead-ends.
+    // Nothing on the sheet says so: the student has to notice that there is only one way out.
+    els.push({
+      id: 'stair-2-storage',
+      role: 'storage',
+      name: 'Storage room where the second stair should be',
+      area: sw * ud,
+      marks: [rect(L - sw, 0, sw, ud, 'medium'), text(L - sw / 2, ud / 2 + 0.5, 'STOR.', 1.3, { anchor: 'middle' })],
+      hit: hitRect(L - sw + 0.5, 0.5, sw - 1, ud - 1),
+    });
+    els.push({
+      id: 'dead-end',
+      role: 'egress-problem',
+      name: 'Dead-end corridor: with only one stair, everyone at this end must walk the length of the corridor to get out',
+      marks: [],
+      hit: hitRect(L - sw - 6, ud + 0.5, sw + 5.5, cw - 1),
+    });
+  }
 
   // ---- core bay (south row) ----
   const cx0 = sw + mid * uw;
@@ -165,7 +186,8 @@ function floorPlan(n: number, uw: number, ud: number, cw: number, sw: number): P
   });
   // stair doors swing in the direction of exit travel: into the stair
   els.push(door('door-stair-1', 'Stair 1 door', [sw - 4.5, ud], [1, 0], [0, -1]));
-  els.push(door('door-stair-2', 'Stair 2 door', [L - sw + 1.5, ud], [1, 0], [0, -1]));
+  if (stairs >= 2) els.push(door('door-stair-2', 'Stair 2 door', [L - sw + 1.5, ud], [1, 0], [0, -1]));
+  else els.push(door('door-storage', 'Storage room door', [L - sw + 1.5, ud], [1, 0], [0, -1]));
   els.push(door('door-trash', 'Trash room door', [cx0 + 12.5, ySouth], [1, 0], [0, 1]));
 
   // ---- windows on the two long exterior walls ----
@@ -952,7 +974,8 @@ function build(params: Record<string, number>): PlanSet {
   const lotDepth = D + front + rear + REAR_YARD;
 
   const site = sitePlan(L, D, front, side, rear);
-  const floor = floorPlan(n, uw, ud, cw, sw);
+  const stairs = params.stairs;
+  const floor = floorPlan(n, uw, ud, cw, sw, stairs);
   const section = buildingSection(ud, cw, storeys, ftf);
   const roof = roofPlan(n, uw, ud, cw, sw);
   const elevation = southElevation(n, uw, sw, storeys, ftf);
@@ -984,7 +1007,9 @@ function build(params: Record<string, number>): PlanSet {
       rentable_sf: rentable,
       avg_unit_sf: rentable / (oneBeds + twoBeds),
       corridor_sf: L * cw,
-      stair_sf: 2 * sw * ud,
+      stair_count: stairs,
+      stair_sf: stairs * sw * ud,
+      storage_sf: (2 - stairs) * sw * ud,
       core_sf: uw * ud,
       bed_width: BED_W,
       bed_depth: BED_D,
@@ -1033,13 +1058,15 @@ export const MF_DOUBLE_LOADED: PlanSetDef = {
   id: 'mf-double-loaded',
   title: 'Multifamily typical floor, double-loaded corridor',
   blurb: 'Eight sheets for one small apartment building: cover, site plan, typical floor plan, roof plan, south elevation, building section, enlarged one-bed unit plan and its reflected ceiling plan.',
-  defaults: { bays: 5, unit_width: 26, unit_depth: 30, corridor_width: 6, stair_width: 10, storeys: 4, floor_to_floor: 10, front_setback: 15, side_setback: 10, rear_setback: 20 },
+  defaults: { bays: 5, unit_width: 26, unit_depth: 30, corridor_width: 6, stair_width: 10, storeys: 4, floor_to_floor: 10, front_setback: 15, side_setback: 10, rear_setback: 20, stairs: 2 },
   limits: {
     bays: [3, 8],
     unit_width: [22, 32],
     unit_depth: [26, 34],
     corridor_width: [5, 8],
     stair_width: [9, 12],
+    /** 1 draws a floor with only one stair, for "spot the problem" questions. */
+    stairs: [1, 2],
     storeys: [3, 6],
     floor_to_floor: [9, 12],
     front_setback: [10, 25],

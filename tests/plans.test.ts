@@ -120,7 +120,9 @@ describe('mf-double-loaded: facts agree with what is drawn', () => {
       expect(units.length).toBe(f.unit_count);
       expect(units.filter((u) => u.name.includes('1BR')).length).toBe(f.one_bed_count);
       expect(units.filter((u) => u.name.includes('2BR')).length).toBe(f.two_bed_count);
-      expect(count(set, 'A-102', 'stair')).toBe(2);
+      expect(count(set, 'A-102', 'stair')).toBe(f.stair_count);
+      expect(count(set, 'A-102', 'egress-problem')).toBe(2 - f.stair_count);
+      expect(count(set, 'A-102', 'storage')).toBe(2 - f.stair_count);
       expect(count(set, 'A-102', 'elevator')).toBe(1);
       // every unit has its own entry door
       for (const u of units) expect(floor.elements.some((e) => e.id === `door-${u.id.slice(5)}`), `${u.id} has no door`).toBe(true);
@@ -128,7 +130,8 @@ describe('mf-double-loaded: facts agree with what is drawn', () => {
       // areas: the parts add up to the whole floor, with no gaps or overlaps
       const unitArea = areaOf(set, 'A-102', ['unit']);
       expect(unitArea).toBeCloseTo(f.rentable_sf, 6);
-      expect(unitArea + f.corridor_sf + f.stair_sf + f.core_sf).toBeCloseTo(f.floor_gsf, 6);
+      expect(unitArea + f.corridor_sf + f.stair_sf + f.storage_sf + f.core_sf).toBeCloseTo(f.floor_gsf, 6);
+      expect(areaOf(set, 'A-102', ['storage'])).toBeCloseTo(f.storage_sf, 6);
       expect(areaOf(set, 'A-102', ['corridor'])).toBeCloseTo(f.corridor_sf, 6);
       expect(areaOf(set, 'A-102', ['core'])).toBeCloseTo(f.core_sf, 6);
       expect(f.floor_gsf).toBeCloseTo(f.building_length * f.building_depth, 6);
@@ -388,6 +391,13 @@ describe('office-floor: facts agree with what is drawn', () => {
       expect(dimOf(set, 'A-104', 'dim-core-length')).toBe(f.core_length);
       expect(dimOf(set, 'A-104', 'dim-length')).toBe(f.plate_length);
       expect(dimOf(set, 'A-104', 'dim-bay-1')).toBe(f.column_spacing);
+      // the area schedule shows the same numbers as the facts
+      const schedule = sheetOf(set, 'A-104').elements.find((e) => e.id === 'area-schedule')!.marks.flatMap((m) => (m.shape.t === 'text' ? [m.shape.text] : []));
+      const shown = (n: number) => `${Math.round(n).toLocaleString('en-US')} SF`;
+      expect(schedule).toContain(shown(f.usable_sf));
+      expect(schedule).toContain(shown(f.penetration_sf));
+      expect(schedule).toContain(shown(f.end_suite_sf));
+      expect(schedule).toContain(shown(f.mid_suite_sf));
     });
   }
 });

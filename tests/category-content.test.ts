@@ -24,6 +24,7 @@ import {
   type McqItem,
   type NumericItem,
   type OrderItem,
+  type PlanGridItem,
   type PlanQItem,
   type PredictItem,
   type SheetGradedItem,
@@ -49,6 +50,7 @@ import {
   renderDocument,
 } from '../src/grading/category';
 import { baseKeyValues, checkAnswerKey, collectTargets, gradeGrid, solutionAttempt, type GridAttempt } from '../src/grading/gridGrader';
+import { gradePlanGrid, keyItem, keySheets, modelAttempt, planGridProblems, takeoffSheet, takeoffValue } from '../src/grading/plangrid';
 import { applyPaths, configureKey, getPath, gradeLeaseConfigure, gradeLeaseRead, gradeLeaseShock, leaseItemProblems, runScenario, scenarioFor, shockTruth } from '../src/grading/leases';
 import { buildMcqOptions, gradeNumeric, numericAnswer } from '../src/grading/simple';
 import { buildPlanSet } from '../src/plans/sets';
@@ -159,10 +161,11 @@ describe('category content: schema and bookkeeping', () => {
 
 describe('category content: text renders cleanly', () => {
   for (const item of CATEGORY_ITEMS) {
-    if (item.type === 'plan') continue; // plan prompts use the plan's facts; checked below
+    if (item.type === 'plan' || item.type === 'plangrid') continue; // these use the plan's facts; checked below
     it(item.id, () => {
       for (const seed of SEEDS.slice(0, 8)) {
-        const values = sampleVars(varsOf(item), seededRng(item.id, seed));
+        // a document review with a drawing can also use the drawing's facts
+        const values = item.type === 'docreview' && item.figure ? renderDocument(item, seed).values : sampleVars(varsOf(item), seededRng(item.id, seed));
         for (const text of templatedTexts(item)) {
           for (const m of text.matchAll(COMPUTED)) {
             const v = evalFormula(m[1], values);
@@ -507,6 +510,130 @@ describe('category content: lease simulator', () => {
           expect([...directions], 'the direction depends on the variant').toHaveLength(1);
         });
       }
+    });
+  }
+});
+
+describe('category content: plan to spreadsheet', () => {
+  it('runs once per question of these types (an empty list is fine)', () => expect(true).toBe(true));
+  for (const item of of<PlanGridItem>('plangrid')) {
+    describe(item.id, () => {
+      const sets = item.figure.variants.map((v) => buildPlanSet(item.figure.set, v));
+      const first = item.workbook.sheets[0].name;
+      const model = (set: (typeof sets)[number]) => modelAttempt(item, set, solutionAttempt(keySheets(item, set)));
+      const setCells = (attempt: GridAttempt, sheet: string, cells: Record<string, string>): GridAttempt => ({ ...attempt, [sheet]: { ...(attempt[sheet] ?? {}), ...cells } });
+      // a cell reference to `addr` (with or without $), not part of a longer address
+      const refTo = (addr: string) => {
+        const m = /^([A-Z]+)(\d+)$/.exec(addr)!;
+        return new RegExp(`(?<![A-Z$!])\\$?${m[1]}\\$?${m[2]}(?![0-9])`, 'g');
+      };
+
+      it('is sound, and its text renders from the drawing for every variant', () => {
+        expect(planGridProblems(item)).toEqual([]);
+        const names = item.workbook.sheets.map((sh) => sh.name);
+        expect(new Set(names).size).toBe(names.length);
+        for (const set of sets) {
+          for (const text of [item.prompt, item.explanation]) {
+            for (const m of text.matchAll(COMPUTED)) expect(isCellError(evalFormula(m[1], set.facts)), m[1]).toBe(false);
+            expect(LEFTOVER.test(renderTemplate(text, set.facts, [])), text).toBe(false);
+          }
+          for (const t of item.takeoffs) expect(Number.isFinite(takeoffValue(t, set))).toBe(true);
+        }
+      });
+
+      it('every takeoff feeds at least one formula cell', () => {
+        const solutions = keySheets(item, sets[0]).flatMap((sh) => Object.values(sh.cells).flatMap((c) => (c.kind === 'target' ? [c.solution] : [])));
+        for (const t of item.takeoffs) expect(solutions.some((f) => refTo(t.cell).test(f)), `${t.cell} (${t.label}) is used by no formula`).toBe(true);
+      });
+
+      it('answer key is clean under random inputs, for every drawing', () => {
+        for (const set of sets) for (const seed of GRID_SEEDS) expect(checkAnswerKey(keyItem(item, set), seed), `seed ${seed}`).toEqual([]);
+      });
+
+      it('the model answer scores 100%, and a blank sheet scores 0', () => {
+        for (const set of sets) {
+          for (const seed of GRID_SEEDS) {
+            const res = gradePlanGrid(item, set, model(set), { seed });
+            const bad = [...res.grid.targets.filter((t) => t.status !== 'correct').map((t) => `${t.id}: ${t.message}`), ...res.takeoffs.filter((t) => !t.correct).map((t) => `${t.id}: ${t.message}`)];
+            expect(bad, `seed ${seed}`).toEqual([]);
+            expect(res.score).toBe(1);
+          }
+          const blank = gradePlanGrid(item, set, {});
+          expect(blank.score).toBe(0);
+          expect(blank.takeoffs.every((t) => t.status === 'empty')).toBe(true);
+        }
+      });
+
+      it('takeoffs: accepted as displayed and as a formula; each listed mistake is caught by name and costs only its own cell', () => {
+        for (const set of sets) {
+          for (const t of item.takeoffs) {
+            const sheet = takeoffSheet(item, t);
+            const v = takeoffValue(t, set);
+            const grade = (raw: string) => gradePlanGrid(item, set, setCells(model(set), sheet, { [t.cell]: raw }), { seed: 1 });
+            const row = (res: ReturnType<typeof grade>) => res.takeoffs.find((x) => x.sheet === sheet && x.addr === t.cell)!;
+            expect(row(grade(formatValue(v, t.format))).correct, `${t.cell} as displayed`).toBe(true);
+            expect(row(grade(`=${v}`)).correct, `${t.cell} as a formula`).toBe(true);
+            expect(row(grade(String(v * 2.5 + 7))).correct, `${t.cell}: a wild number`).toBe(false);
+            for (const m of t.mistakes) {
+              const mv = evalFormula(m.formula, set.facts);
+              expect(typeof mv, `${t.cell}: mistake ${m.formula}`).toBe('number');
+              const res = grade(String(mv));
+              expect(row(res).correct, `${t.cell}: mistake ${m.formula} is graded correct`).toBe(false);
+              expect(row(res).category, `${t.cell}: mistake ${m.formula} not recognised`).toBe(m.category);
+              expect(res.grid.targets.filter((c) => c.credit !== 1).map((c) => c.id), 'a wrong takeoff must not cost the formula cells').toEqual([]);
+            }
+          }
+        }
+      });
+
+      it('a number typed into a formula instead of a reference to the takeoff cell fails the stress test', () => {
+        const set = sets[0];
+        const key = keySheets(item, set);
+        for (const t of item.takeoffs) {
+          const sheet = takeoffSheet(item, t);
+          const v = takeoffValue(t, set);
+          const users = Object.entries(key.find((sh) => sh.name === sheet)!.cells).filter(([, c]) => c.kind === 'target' && refTo(t.cell).test(c.solution));
+          for (const [addr, c] of users) {
+            if (c.kind !== 'target') continue;
+            const pasted = c.solution.replace(refTo(t.cell), String(v));
+            const res = gradePlanGrid(item, set, setCells(model(set), sheet, { [addr]: pasted }), { seed: 1 });
+            const r = res.grid.targets.find((x) => x.sheet === sheet && x.addr === addr)!;
+            expect(r.status, `${addr}: ${pasted} should fail once ${t.cell} changes`).toBe('wrong');
+          }
+        }
+      });
+
+      it('typing the right numbers into the formula cells is caught as hardcoding', () => {
+        const set = sets[0];
+        const values = baseKeyValues(keySheets(item, set));
+        let attempt = model(set);
+        for (const [sheet, cells] of Object.entries(values)) attempt = setCells(attempt, sheet, Object.fromEntries(Object.entries(cells).map(([a, v]) => [a, String(v)])));
+        const res = gradePlanGrid(item, set, attempt);
+        for (const r of res.grid.targets) {
+          expect(r.status, r.id).toBe('wrong');
+          expect(r.category, r.id).toBe('hardcode');
+        }
+        expect(res.takeoffs.every((t) => t.correct)).toBe(true);
+      });
+
+      item.mistakes.forEach((m, mi) => {
+        it(`mistake ${mi + 1} is caught and named: ${m.label.slice(0, 50)}`, () => {
+          for (const set of sets) {
+            for (const seed of GRID_SEEDS) {
+              const res = gradePlanGrid(item, set, setCells(model(set), m.sheet ?? first, m.cells), { seed });
+              for (const addr of Object.keys(m.cells)) {
+                const r = res.grid.targets.find((t) => t.addr === addr && t.sheet === (m.sheet ?? first));
+                expect(r, `${addr} is not a formula cell`).toBeDefined();
+                expect(r!.status, `seed ${seed} ${addr} (${m.cells[addr]})`).toBe('wrong');
+                expect(r!.message, `seed ${seed} ${addr}`).toBe(m.label);
+                expect(r!.category).toBe(m.category);
+              }
+              for (const r of res.grid.targets) if (!(r.addr in m.cells)) expect(['correct', 'upstream'], `seed ${seed} ${r.id}`).toContain(r.status);
+              expect(res.takeoffs.every((t) => t.correct)).toBe(true);
+            }
+          }
+        });
+      });
     });
   }
 });

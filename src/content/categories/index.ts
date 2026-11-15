@@ -9,6 +9,7 @@
  * so a mistake shows up as a clear error the moment the app or tests load.
  */
 import { leaseItemProblems } from '../../grading/leases';
+import { planGridProblems } from '../../grading/plangrid';
 import { planSetDef, buildPlanSet } from '../../plans/sets';
 import { ItemSchema, type Item, type ItemInput } from '../schema';
 import { categoryBySlug, categoryTopic, CORE_CATEGORY } from './registry';
@@ -51,6 +52,17 @@ function check(item: Item, folder: string): void {
       for (const l of item.document.lines) {
         if ((l.cells?.length ?? 0) !== cols - 1) fail(item.id, `line "${l.id}" needs ${cols - 1} cells to match the columns`);
       }
+    }
+  }
+  if (item.type === 'plangrid') {
+    const problems = planGridProblems(item);
+    if (problems.length) fail(item.id, problems.join('; '));
+  }
+  if (item.type === 'docreview' && item.figure) {
+    if (!planSetDef(item.figure.set)) fail(item.id, `unknown plan set "${item.figure.set}"`);
+    for (const variant of item.figure.variants) {
+      const set = buildPlanSet(item.figure.set, variant); // throws on a bad parameter
+      if (!set.sheets.some((s) => s.id === item.figure!.sheet)) fail(item.id, `plan set has no sheet "${item.figure.sheet}"`);
     }
   }
   if (item.type === 'leasesim') {

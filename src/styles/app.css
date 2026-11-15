@@ -1919,3 +1919,12 @@ ul.objectives {
   font-weight: 700;
   letter-spacing: 0.02em;
 }
+
+/* plan to spreadsheet: the two results tables */
+.results-head {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}

@@ -113,6 +113,7 @@ export function JudgmentQuestion({ item, seed, graded, onGraded }: QuestionProps
 // ---------------------------------------------------------------------------
 export function DocReviewQuestion({ item, seed, graded, onGraded }: QuestionProps<DocReviewItem>) {
   const doc = useMemo(() => renderDocument(item, seed), [item, seed]);
+  const [sheetId, setSheetId] = useState(item.figure?.sheet ?? '');
   const [flags, setFlags] = useState<string[]>([]);
   const [hints, setHints] = useState(0);
   const [result, setResult] = useState<DocReviewResult | null>(null);
@@ -172,6 +173,11 @@ export function DocReviewQuestion({ item, seed, graded, onGraded }: QuestionProp
   return (
     <>
       <div className="q-prompt">{renderTemplate(item.prompt, doc.values, item.vars)}</div>
+      {doc.set && (
+        <div style={{ marginBottom: 14 }}>
+          <PlanViewer set={doc.set} sheetId={sheetId} onSheetChange={setSheetId} tool="real" />
+        </div>
+      )}
       <div className="doc" role="group" aria-label={item.document.title}>
         <div className="doc-head">
           <span className="doc-kind">{item.document.kind}</span>
