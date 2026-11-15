@@ -305,3 +305,26 @@ export function revisionDelta(id: string, cx: number, cy: number, num: string, k
     hit: { t: 'circle', cx, cy, r: h * 0.75 },
   };
 }
+
+/** An elevation marker: a bubble (drawing number over sheet) with a solid pointer toward the face being viewed. No cut line. */
+export function elevationMarker(id: string, name: string, cx: number, cy: number, num: string, sheet: string, look: Pt, k = 1, link?: string): PlanElement {
+  const head = sectionHead(id, name, cx, cy, num, sheet, look, k, link);
+  return { ...head, role: 'elevation-marker' };
+}
+
+/** Level markers down the right-hand side of a section or elevation: a leader, a target and the level's name and height above grade. */
+export function levelMarkers(x: number, storeys: number, floorToFloor: number): PlanElement[] {
+  const out: PlanElement[] = [];
+  for (let i = 0; i <= storeys; i++) {
+    const y = -i * floorToFloor;
+    const name = i === storeys ? 'ROOF' : `LEVEL ${i + 1}`;
+    out.push({
+      id: `level-${i === storeys ? 'roof' : i + 1}`,
+      role: 'level-marker',
+      name: `Level marker: ${name.toLowerCase()}, ${feetInches(i * floorToFloor)} above grade`,
+      marks: [line(x + 2, y, x + 30, y, 'center'), circle(x + 31.5, y, 1.5, 'thin', 'paper'), line(x + 30, y, x + 33, y, 'thin'), text(x + 4, y - 0.8, `${name}   EL. +${feetInches(i * floorToFloor)}`, 1.4)],
+      hit: hitRect(x + 2, y - 2.8, 31, 3.6),
+    });
+  }
+  return out;
+}

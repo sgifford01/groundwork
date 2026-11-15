@@ -68,8 +68,8 @@ src/
                index.ts (ALL_ITEMS = core; CATEGORY_ITEMS; EVERY_ITEM; itemsOfCategory)
                categories/registry.ts (THE category list), categories/index.ts (collects items*.ts automatically),
                categories/specs.ts (spec rendering), categories/<slug>/{BUILD_SPEC.md, spec-data.ts, items*.ts}
-  plans/       generated drawings: model.ts, draw.ts (symbols), mfDoubleLoaded.ts (first plan set: cover, site plan,
-               floor plan, section, enlarged unit), sets.ts
+  plans/       generated drawings: model.ts, draw.ts (symbols), mfDoubleLoaded.ts (first plan set, eight sheets: cover,
+               site plan, floor plan, roof plan, elevation, section, enlarged unit, unit ceiling plan), sets.ts
   leases/      engine.ts: the lease engine (rent roll + market leasing assumptions -> lease-by-lease cash flow)
   learn/       sm2.ts (spaced repetition), mastery.ts, session.ts (session builder), placement.ts, stats.ts,
                category.ts (per-category progress, due everywhere, status rows), start.ts (starts sessions; `category` option)
@@ -253,6 +253,8 @@ Multi-sheet tasks work (sheet tabs, green cross-sheet links, `sheet:` on a mista
 **ARGUS chunk 4 (built 2026-11-14, first by design):** the lease engine, the lease simulator, the `leasesim` type and 9 questions. The build order is at the end of `docs/BUILDING_CATEGORIES.md`.
 
 **Plan Reading chunk 1 (built 2026-11-15):** `navigate` tasks, multi-select and cross-sheet `locate`, an area ruler, revision and section marks, a site plan (C-101) and a building section (A-301), and 19 questions (plan set organisation and symbols). Sheets were renumbered to the discipline + sheet-type convention (the floor plan is A-102).
+
+**Plan Reading chunk 2 (built 2026-11-15):** roof plan (A-103), south elevation (A-201) and unit reflected ceiling plan (A-402), and 18 questions (drawing types, scales and measuring). Plan Reading is at 39 of 70.
 
 **Not built yet:** most of the content of the eight categories. Run `npm run category-status` for the current counts, and keep each category's `status` in the registry up to date (`planned` → `in-progress` → `built`).
 

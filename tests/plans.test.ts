@@ -236,7 +236,60 @@ describe('mf-double-loaded: facts agree with what is drawn', () => {
       expect(cut.x1).toBeGreaterThan(p.stair_width);
 
       // sheets are in set order and numbered by the discipline + sheet-type convention
-      expect(set.sheets.map((s) => s.id)).toEqual(['G-001', 'C-101', 'A-102', 'A-301', 'A-401']);
+      expect(set.sheets.map((s) => s.id)).toEqual(['G-001', 'C-101', 'A-102', 'A-103', 'A-201', 'A-301', 'A-401', 'A-402']);
+
+      // the south elevation (A-201): one window per south-side apartment per floor, heights as stated
+      const elev = set.sheets.find((s) => s.id === 'A-201')!;
+      const windows = elev.elements.filter((e) => e.role === 'window');
+      expect(windows.length).toBe(f.south_window_count);
+      expect(f.south_window_count).toBe(f.storeys * f.south_windows_per_floor);
+      // as many windows per floor as there are apartments on the south side of the floor plan
+      expect(f.south_windows_per_floor).toBe(floor.elements.filter((e) => e.id.startsWith('window-s-')).length);
+      expect(elev.elements.filter((e) => e.role === 'level-marker').length).toBe(f.storeys + 1);
+      const overall = elev.elements.find((e) => e.id === 'dim-overall-height')!.marks[0].shape as { t: 'line'; y1: number; y2: number };
+      expect(Math.abs(overall.y2 - overall.y1)).toBe(f.overall_height);
+      expect(f.overall_height).toBe(f.building_height + f.parapet_height);
+      // every window sits inside its own storey, above its sill
+      for (const w of windows) {
+        const r = w.marks[0].shape as { t: 'rect'; x: number; y: number; w: number; h: number };
+        const storey = Number(w.id.split('-')[1]);
+        expect(-(r.y + r.h)).toBeCloseTo((storey - 1) * f.floor_to_floor + f.sill_height, 6);
+        expect(-r.y).toBeLessThan(storey * f.floor_to_floor);
+        expect(r.x).toBeGreaterThan(0);
+        expect(r.x + r.w).toBeLessThan(length);
+      }
+      expect(floor.elements.find((e) => e.role === 'elevation-marker')?.link).toBe('A-201');
+
+      // the roof plan (A-103)
+      const roof = set.sheets.find((s) => s.id === 'A-103')!;
+      expect(roof.elements.filter((e) => e.role === 'roof-drain').length).toBe(f.roof_drain_count);
+      expect(roof.elements.filter((e) => e.role === 'rooftop-unit').length).toBe(f.rooftop_unit_count);
+      expect(f.roof_sf).toBe(f.floor_gsf);
+      const roofLength = roof.elements.find((e) => e.id === 'dim-roof-length')!.marks[0].shape as { t: 'line'; x1: number; x2: number };
+      expect(Math.abs(roofLength.x2 - roofLength.x1)).toBe(length);
+      // equipment and drains are on the roof, and do not sit on top of each other
+      const boxes = roof.elements.filter((e) => ['roof-drain', 'rooftop-unit', 'roof-access', 'elevator-overrun'].includes(e.role)).map((e) => {
+        const h = e.hit!;
+        return h.t === 'circle' ? { x: h.cx - h.r, y: h.cy - h.r, w: 2 * h.r, h: 2 * h.r } : (h as { x: number; y: number; w: number; h: number });
+      });
+      boxes.forEach((a, i) => {
+        expect(a.x >= 0 && a.y >= 0 && a.x + a.w <= length && a.y + a.h <= depth, 'roof item is off the roof').toBe(true);
+        boxes.slice(i + 1).forEach((b) => expect(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, 'two roof items overlap').toBe(true));
+      });
+
+      // the unit ceiling plan (A-402): lights counted, lowered ceilings measured, everything inside the unit
+      const rcp = set.sheets.find((s) => s.id === 'A-402')!;
+      const lights = rcp.elements.filter((e) => e.role === 'light-fixture');
+      expect(lights.length).toBe(f.light_count);
+      expect(areaOf(set, 'A-402', ['soffit'])).toBeCloseTo(f.soffit_sf, 6);
+      expect(f.soffit_sf).toBe(f.bath_sf + f.hall_sf + f.kitchen_sf);
+      for (const l of [...lights, ...rcp.elements.filter((e) => ['exhaust-fan', 'smoke-detector'].includes(e.role))]) {
+        const h = l.hit!;
+        const [x, y] = h.t === 'circle' ? [h.cx, h.cy] : [(h as { x: number }).x, (h as { y: number }).y];
+        expect(x > 0 && x < p.unit_width && y > 0 && y < p.unit_depth, `${l.id} is outside the unit`).toBe(true);
+      }
+      expect(f.soffit_height).toBeLessThan(f.ceiling_height);
+      expect(rcp.scale.ftPerInch).toBe(4);
       for (const sh of set.sheets) expect(sh.id.startsWith(`${sh.discipline}-`), sh.id).toBe(true);
 
       // navigation: the floor plan calls out the enlarged plan, the cover indexes every sheet

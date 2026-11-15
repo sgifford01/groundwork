@@ -390,7 +390,7 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
             } else if (i === choice) cls.push('picked');
             return (
               <button key={o.text} type="button" role="radio" aria-checked={i === choice} className={cls.join(' ')} disabled={graded} onClick={() => setChoice(i)}>
-                <span className="option-key">{'ABCDEFGH'[i]}</span>
+                <span className="option-key">{'ABCDEFGHIJKLMN'[i]}</span>
                 <span>
                   {task.kind === 'navigate' ? <span className="sheet-id">{o.text}</span> : o.text}
                   {graded && i === choice && !o.correct && o.why && <div className="option-why">{o.why}</div>}

@@ -159,7 +159,7 @@ The owner asked (2026-11-14) for the hardest work to be done first, while the Fa
 |---|---|---|
 | 1 (done 2026-11-14) | `argus` chunk 4: lease engine, simulator component, `leasesim` type, 9 questions | The only part of Commercial Leases that needs new engineering. Done first, it unblocks the whole 70-question category for any model. It does not depend on ARGUS chunks 1 to 3 |
 | 2 (done 2026-11-15) | `plan-reading` chunk 1: viewer extensions, site plan and section sheets, 19 questions | Every later plan-reading chunk builds on these viewer features |
-| 3 | `plan-reading` chunk 2: site plan, section, elevation and roof plan sheets, 18 questions | New drawing generators |
+| 3 (done 2026-11-15) | `plan-reading` chunk 2: roof plan, elevation and ceiling plan sheets, 18 questions | New drawing generators |
 | 4 | `plan-reading` chunk 3: retail, office and mixed-use podium plan sets, 12 questions | The largest drawing-generation job in the app |
 | 5 | `plan-reading` chunk 4: takeoff attachment for grid questions, 18 questions | Touches the grid types additively; the existing grid tests must pass untouched |
 | 6 | `plan-reading` chunk 5: capstone and accessibility pass, 1 question | Finishes the category |

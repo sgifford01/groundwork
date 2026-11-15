@@ -5,8 +5,11 @@
  *   G-001  Cover sheet and sheet index
  *   C-101  Site plan                     1" = 20'
  *   A-102  Level 2 floor plan            1/8" = 1'-0"
+ *   A-103  Roof plan                     1/8" = 1'-0"
+ *   A-201  South elevation               1/8" = 1'-0"
  *   A-301  Building section              1/8" = 1'-0"
  *   A-401  Enlarged unit plan (1BR)      1/4" = 1'-0"
+ *   A-402  Enlarged unit reflected ceiling plan   1/4" = 1'-0"
  *
  * Sheet numbers follow the common discipline-letter + sheet-type convention
  * (1 plans, 3 sections, 4 large-scale views).
@@ -26,7 +29,9 @@
  *   drawing-title scale-bar north-arrow title-block sheet-number note border
  *   room partition tub toilet lavatory counter refrigerator range sheet-reference
  *   property-line setback-line easement building-footprint street
- *   floor-slab level-marker grade-line
+ *   floor-slab level-marker grade-line floor-line elevation-marker
+ *   parapet roof-drain rooftop-unit roof-access elevator-overrun slope-arrow
+ *   ceiling-zone soffit ceiling-tag light-fixture exhaust-fan smoke-detector
  *   project-title heading index-row prefix-row
  */
 import {
@@ -36,9 +41,11 @@ import {
   dimension,
   door,
   drawingTitle,
+  elevationMarker,
   elevator,
   gridBubble,
   hitRect,
+  levelMarkers,
   line,
   northArrow,
   opening,
@@ -208,6 +215,9 @@ function floorPlan(n: number, uw: number, ud: number, cw: number, sw: number): P
   });
   els.push(sectionHead('section-a-north', 'Section marker: section A, drawn on sheet A-301', xs, -3.4, 'A', 'A-301', [-1, 0], k, 'A-301'));
   els.push(sectionHead('section-a-south', 'Section marker: section A, drawn on sheet A-301', xs, D + 3.4, 'A', 'A-301', [-1, 0], k, 'A-301'));
+
+  // ---- elevation marker: south of the building, looking north at the south face ----
+  els.push(elevationMarker('elevation-south', 'Elevation marker: drawing 1 on sheet A-201 (the south elevation)', L * 0.35, D + 8, '1', 'A-201', [0, -1], k, 'A-201'));
 
   // ---- revision 1: the trash room, clouded, with its delta ----
   els.push({
@@ -418,7 +428,7 @@ const STOREY_WORDS: Record<number, string> = { 3: 'THREE', 4: 'FOUR', 5: 'FIVE',
 
 function coverSheet(index: { id: string; title: string }[], storeys: number): PlanSheet {
   const k = 1;
-  const bounds = { x: 0, y: 0, w: 190, h: 110 };
+  const bounds = { x: 0, y: 0, w: 190, h: 126 };
   const els: PlanElement[] = [border(bounds, k)];
   els.push({
     id: 'project-title',
@@ -459,10 +469,10 @@ function coverSheet(index: { id: string; title: string }[], storeys: number): Pl
     role: 'note',
     name: 'General notes',
     marks: [
-      text(10, 84, 'GENERAL NOTES', 2.4, { bold: true }),
-      text(10, 89, '1. THIS SET IS GENERATED FOR TEACHING. IT IS NOT A REAL PROJECT.', 1.6),
-      text(10, 93, '2. DIMENSIONS ARE TO WALL CENTRELINES UNLESS NOTED.', 1.6),
-      text(10, 97, '3. DO NOT SCALE DRAWINGS FOR CONSTRUCTION. WRITTEN DIMENSIONS GOVERN.', 1.6),
+      text(10, 102, 'GENERAL NOTES', 2.4, { bold: true }),
+      text(10, 107, '1. THIS SET IS GENERATED FOR TEACHING. IT IS NOT A REAL PROJECT.', 1.6),
+      text(10, 111, '2. DIMENSIONS ARE TO WALL CENTRELINES UNLESS NOTED.', 1.6),
+      text(10, 115, '3. DO NOT SCALE DRAWINGS FOR CONSTRUCTION. WRITTEN DIMENSIONS GOVERN.', 1.6),
     ],
   });
   els.push(...titleBlock(bounds, { project: PROJECT, title: 'COVER & SHEET INDEX', sheet: 'G-001', scale: 'NONE' }, k));
@@ -567,6 +577,8 @@ function sitePlan(L: number, D: number, front: number, side: number, rear: numbe
     [sb.x, sb.y], [sb.x + sb.w, sb.y], [sb.x, sb.y + sb.h], [sb.x + sb.w, sb.y + sb.h],
     [bx, by], [bx + L, by], [bx, by + D], [bx + L, by + D],
     [0, EASEMENT], [W, EASEMENT],
+    // straight above and below the building's corners, on the property lines, for measuring yards
+    [bx, 0], [bx + L, 0], [bx, H], [bx + L, H],
   ];
   return { id: 'C-101', title: 'Site plan', discipline: 'C', scale: { label: '1" = 20\'', ftPerInch: 20 }, bounds, elements: els, snaps };
 }
@@ -654,6 +666,268 @@ function buildingSection(ud: number, cw: number, storeys: number, ftf: number): 
   return { id: 'A-301', title: 'Building section', discipline: 'A', scale: { label: '1/8" = 1\'-0"', ftPerInch: 8 }, bounds, elements: els, snaps };
 }
 
+const SILL = 3; // window sill above the floor (ft)
+const WINDOW_H = 5; // window height (ft)
+const WINDOW_W = 6; // window width (ft)
+
+/** The apartments on the south side of a floor, west to east: their left edge and width. The core bay has none. */
+function southUnits(n: number, uw: number, sw: number): { x: number; w: number }[] {
+  const L = 2 * sw + n * uw;
+  const mid = Math.floor(n / 2);
+  const out = [{ x: 0, w: sw + uw }];
+  for (let i = 1; i < n - 1; i++) if (i !== mid) out.push({ x: sw + i * uw, w: uw });
+  out.push({ x: L - sw - uw, w: sw + uw });
+  return out;
+}
+
+/** A-201: the south face of the building, seen from the street. Ground is y = 0; up is negative y. */
+function southElevation(n: number, uw: number, sw: number, storeys: number, ftf: number): PlanSheet {
+  const k = 1;
+  const L = 2 * sw + n * uw;
+  const top = storeys * ftf;
+  const H = top + PARAPET;
+  const bounds = { x: -40, y: -H - 22, w: L + 40 + 100, h: H + 22 + 40 };
+  const els: PlanElement[] = [border(bounds, k)];
+
+  els.push({
+    id: 'grade-line',
+    role: 'grade-line',
+    name: 'Grade (ground) line',
+    marks: [line(-14, 0, L + 14, 0, 'wall'), rect(-14, 0, L + 28, 2.2, 'none', 'hatch')],
+    hit: hitRect(-14, -0.8, L + 28, 3),
+  });
+  els.push({ id: 'facade', role: 'exterior-wall', name: 'South face of the building', marks: [rect(0, -H, L, H, 'wall')] });
+  // floor lines, and the roof line with the parapet above it
+  const lines = [];
+  for (let i = 1; i <= storeys; i++) lines.push(line(0, -i * ftf, L, -i * ftf, i === storeys ? 'medium' : 'thin'));
+  els.push({ id: 'floor-lines', role: 'floor-line', name: 'Floor lines and roof line', marks: lines });
+  els.push({ id: 'parapet', role: 'parapet', name: 'Parapet (the wall that rises above the roof)', marks: [text(L / 2, -top - 0.9, 'PARAPET', 1.1, { anchor: 'middle' })], hit: hitRect(0, -H, L, PARAPET) });
+
+  // one window per apartment per floor; the core bay has none
+  const units = southUnits(n, uw, sw);
+  for (let i = 0; i < storeys; i++) {
+    units.forEach((u, j) => {
+      const x = u.x + u.w / 2 - WINDOW_W / 2;
+      const y = -i * ftf - SILL - WINDOW_H;
+      els.push({
+        id: `window-${i + 1}-${j + 1}`,
+        role: 'window',
+        name: `Window, level ${i + 1}`,
+        marks: [rect(x, y, WINDOW_W, WINDOW_H, 'medium', 'tint'), line(x + WINDOW_W / 2, y, x + WINDOW_W / 2, y + WINDOW_H, 'thin')],
+        hit: hitRect(x, y, WINDOW_W, WINDOW_H),
+      });
+    });
+  }
+  // the building entrance, at the core bay on the ground floor
+  const ex = sw + Math.floor(n / 2) * uw + uw / 2 - 3;
+  els.push({
+    id: 'entry-door',
+    role: 'door',
+    name: 'Building entrance',
+    marks: [rect(ex, -7.5, 6, 7.5, 'medium', 'paper'), line(ex + 3, -7.5, ex + 3, 0, 'thin')],
+    hit: hitRect(ex, -7.5, 6, 7.5),
+  });
+
+  els.push(...levelMarkers(L, storeys, ftf));
+  for (let i = 0; i < storeys; i++) {
+    els.push(dimension(`dim-storey-${i + 1}`, `Floor-to-floor height, level ${i + 1}`, [-9, -(i + 1) * ftf], [-9, -i * ftf], k));
+  }
+  els.push(dimension('dim-overall-height', 'Overall height to the top of the parapet', [-16, -H], [-16, 0], k));
+  els.push(dimension('dim-elevation-length', 'Building length', [0, 7], [L, 7], k));
+
+  els.push(drawingTitle(0, 18, '1', 'A-201', 'SOUTH ELEVATION', '1/8" = 1\'-0"', k));
+  els.push({
+    id: 'back-reference',
+    role: 'sheet-reference',
+    name: 'Reference back to the floor plan (A-102)',
+    link: 'A-102',
+    marks: [text(0, 25, 'VIEWPOINT SHOWN BY THE ELEVATION MARKER ON A-102.', 1.2)],
+    hit: hitRect(0, 23.2, 50, 2.6),
+  });
+  els.push(scaleBar(Math.max(70, L * 0.5), 19, 8, k));
+  els.push(...titleBlock(bounds, { project: PROJECT, title: 'SOUTH ELEVATION', sheet: 'A-201', scale: '1/8" = 1\'-0"' }, k));
+
+  const snaps: Pt[] = [];
+  for (let i = 0; i <= storeys; i++) snaps.push([0, -i * ftf], [L, -i * ftf]);
+  snaps.push([0, -H], [L, -H]);
+  return { id: 'A-201', title: 'South elevation', discipline: 'A', scale: { label: '1/8" = 1\'-0"', ftPerInch: 8 }, bounds, elements: els, snaps };
+}
+
+const ROOF_DRAINS = 4;
+
+/** A-103: the roof from above: parapet, drains and the slope to them, rooftop equipment, the hatch and the elevator overrun. */
+function roofPlan(n: number, uw: number, ud: number, cw: number, sw: number): PlanSheet {
+  const k = 1;
+  const L = 2 * sw + n * uw;
+  const D = 2 * ud + cw;
+  const bounds = { x: -36, y: -36, w: L + 36 + 74, h: D + 36 + 36 };
+  const els: PlanElement[] = [border(bounds, k)];
+
+  els.push({ id: 'parapet', role: 'parapet', name: 'Parapet around the roof edge', marks: [rect(0, 0, L, D, 'wall'), rect(1, 1, L - 2, D - 2, 'thin')] });
+
+  // drains along the middle of the roof, with arrows showing the roof sloping to them
+  const arrows = [];
+  for (let i = 0; i < ROOF_DRAINS; i++) {
+    const x = (L * (2 * i + 1)) / (2 * ROOF_DRAINS);
+    const y = D / 2;
+    els.push({
+      id: `roof-drain-${i + 1}`,
+      role: 'roof-drain',
+      name: 'Roof drain',
+      marks: [circle(x, y, 0.9, 'medium', 'paper'), line(x - 0.9, y, x + 0.9, y, 'thin'), line(x, y - 0.9, x, y + 0.9, 'thin'), text(x + 1.6, y + 0.5, 'RD', 1.1)],
+      hit: { t: 'circle', cx: x, cy: y, r: 2 },
+    });
+    arrows.push(line(x, y - 12, x, y - 4, 'thin'), poly([[x, y - 3], [x - 0.6, y - 4.6], [x + 0.6, y - 4.6]], 'thin', 'solid'));
+    arrows.push(line(x, y + 12, x, y + 4, 'thin'), poly([[x, y + 3], [x - 0.6, y + 4.6], [x + 0.6, y + 4.6]], 'thin', 'solid'));
+  }
+  els.push({ id: 'slope-arrows', role: 'slope-arrow', name: 'Slope arrows: the roof falls toward the drains', marks: [...arrows, text(L / 2, D / 2 - 13.2, 'SLOPE TO DRAIN', 1.1, { anchor: 'middle' })] });
+
+  // one condensing unit per north-side bay
+  for (let i = 0; i < n; i++) {
+    const x = sw + i * uw + uw / 2 - 2;
+    const y = D * 0.2 - 2;
+    els.push({
+      id: `rooftop-unit-${i + 1}`,
+      role: 'rooftop-unit',
+      name: 'Rooftop mechanical unit',
+      marks: [rect(x, y, 4, 4, 'medium', 'paper'), circle(x + 2, y + 2, 1.3, 'thin', 'none')],
+      hit: hitRect(x, y, 4, 4),
+    });
+  }
+  els.push({
+    id: 'roof-hatch',
+    role: 'roof-access',
+    name: 'Roof hatch (access from stair 1)',
+    marks: [rect(sw / 2 - 1.5, 5, 3, 4, 'medium', 'paper'), line(sw / 2 - 1.5, 5, sw / 2 + 1.5, 9, 'thin'), text(sw / 2, 11, 'HATCH', 0.9, { anchor: 'middle' })],
+    hit: hitRect(sw / 2 - 1.5, 5, 3, 4),
+  });
+  const cx0 = sw + Math.floor(n / 2) * uw;
+  els.push({
+    id: 'elevator-overrun',
+    role: 'elevator-overrun',
+    name: 'Elevator overrun (the top of the shaft, above the roof)',
+    marks: [rect(cx0 + 1.5, ud + cw + 6, 8, 8, 'medium', 'tint'), text(cx0 + 5.5, ud + cw + 16, 'ELEV. OVERRUN', 0.9, { anchor: 'middle' })],
+    hit: hitRect(cx0 + 1.5, ud + cw + 6, 8, 8),
+  });
+
+  els.push(dimension('dim-roof-length', 'Roof length', [0, -9], [L, -9], k));
+  els.push(dimension('dim-roof-depth', 'Roof depth', [-9, 0], [-9, D], k));
+  els.push(drawingTitle(0, D + 17, '1', 'A-103', 'ROOF PLAN', '1/8" = 1\'-0"', k));
+  els.push(scaleBar(Math.max(70, L * 0.5), D + 18, 8, k));
+  els.push(northArrow(L + 14, D + 17, k));
+  els.push(...titleBlock(bounds, { project: PROJECT, title: 'ROOF PLAN', sheet: 'A-103', scale: '1/8" = 1\'-0"' }, k));
+
+  return { id: 'A-103', title: 'Roof plan', discipline: 'A', scale: { label: '1/8" = 1\'-0"', ftPerInch: 8 }, bounds, elements: els, snaps: [[0, 0], [L, 0], [0, D], [L, D]] };
+}
+
+const CEILING = 9; // ceiling height in the main rooms (ft)
+const SOFFIT = 8; // lowered ceiling over the bathroom, entry and kitchen (ft)
+
+/** A-402: the unit's ceiling, drawn in the same orientation as the floor plan (as if reflected in a mirror on the floor). */
+function unitCeilingPlan(uw: number, ud: number): { sheet: PlanSheet; lights: number } {
+  const k = 0.5;
+  const bounds = { x: -22, y: -20, w: uw + 22 + 42, h: ud + 20 + 22 };
+  const els: PlanElement[] = [border(bounds, k)];
+  const yBath = ud - BATH_D;
+  const yKitchen = ud - KITCHEN_D;
+
+  // lowered ceilings are hatched
+  const soffits: [string, string, number, number, number, number][] = [
+    ['bath', 'Lowered ceiling over the bathroom', 0, yBath, BATH_W, BATH_D],
+    ['hall', 'Lowered ceiling over the entry', BATH_W, yBath, BED_W - BATH_W, BATH_D],
+    ['kitchen', 'Lowered ceiling over the kitchen', BED_W, yKitchen, uw - BED_W, KITCHEN_D],
+  ];
+  for (const [id, name, x, y, w, h] of soffits) {
+    els.push({ id: `soffit-${id}`, role: 'soffit', name, area: w * h, marks: [rect(x, y, w, h, 'thin', 'hatch')], hit: hitRect(x + 0.3, y + 0.3, w - 0.6, h - 0.6) });
+  }
+  els.push({
+    id: 'ceiling-lines',
+    role: 'partition',
+    name: 'Walls, shown where they meet the ceiling',
+    marks: [rect(0, 0, BED_W, BED_D, 'thin'), rect(0, BED_D, BED_W, yBath - BED_D, 'thin'), line(BED_W, 0, BED_W, ud, 'thin')],
+  });
+  els.push({ id: 'unit-outline', role: 'exterior-wall', name: 'Unit demising and exterior walls', marks: [rect(0, 0, uw, ud, 'wall')] });
+
+  // ceiling height tags
+  const tags: [string, number, number, number][] = [
+    ['bedroom', BED_W / 2, BED_D - 2, CEILING],
+    ['living', BED_W + (uw - BED_W) / 2, yKitchen - 2, CEILING],
+    ['bath', BATH_W / 2, yBath + 1.6, SOFFIT],
+    ['kitchen', BED_W + (uw - BED_W) / 2, ud - 1.6, SOFFIT],
+  ];
+  for (const [id, x, y, h] of tags) {
+    els.push({
+      id: `ceiling-tag-${id}`,
+      role: 'ceiling-tag',
+      name: `Ceiling height tag: ${feetInches(h)} above the floor`,
+      marks: [rect(x - 2.1, y - 0.75, 4.2, 1.5, 'thin', 'paper'), text(x, y + 0.3, `${feetInches(h)} CLG`, 0.75, { anchor: 'middle' })],
+      hit: hitRect(x - 2.1, y - 0.75, 4.2, 1.5),
+    });
+  }
+
+  // light fixtures: a circle with a cross
+  const lights: Pt[] = [
+    [BED_W / 2, BED_D / 2 - 1],
+    [BED_W / 2, BED_D + (yBath - BED_D) / 2],
+    [BATH_W / 2, yBath + BATH_D / 2 + 1.2],
+    [BATH_W + (BED_W - BATH_W) / 2, yBath + BATH_D / 2],
+  ];
+  const lw = uw - BED_W;
+  for (const fx of [0.3, 0.7]) for (const fy of [0.3, 0.7]) lights.push([BED_W + lw * fx, yKitchen * fy - 1]);
+  for (const fx of [0.2, 0.5, 0.8]) lights.push([BED_W + lw * fx, yKitchen + KITCHEN_D / 2 - 1.2]);
+  lights.forEach(([x, y], i) => {
+    els.push({
+      id: `light-${i + 1}`,
+      role: 'light-fixture',
+      name: 'Ceiling light fixture',
+      marks: [circle(x, y, 0.45, 'medium', 'paper'), line(x - 0.45, y, x + 0.45, y, 'thin'), line(x, y - 0.45, x, y + 0.45, 'thin')],
+      hit: { t: 'circle', cx: x, cy: y, r: 0.9 },
+    });
+  });
+  els.push({
+    id: 'exhaust-fan',
+    role: 'exhaust-fan',
+    name: 'Bathroom exhaust fan',
+    marks: [rect(BATH_W - 2.2, yBath + 0.8, 1.2, 1.2, 'medium', 'paper'), line(BATH_W - 2.2, yBath + 0.8, BATH_W - 1, yBath + 2, 'thin'), line(BATH_W - 1, yBath + 0.8, BATH_W - 2.2, yBath + 2, 'thin')],
+    hit: hitRect(BATH_W - 2.5, yBath + 0.5, 1.8, 1.8),
+  });
+  const detectors: Pt[] = [[BED_W - 2, 2], [BATH_W + (BED_W - BATH_W) / 2, ud - 1.6]];
+  detectors.forEach(([x, y], i) => {
+    els.push({
+      id: `smoke-detector-${i + 1}`,
+      role: 'smoke-detector',
+      name: 'Smoke detector',
+      marks: [circle(x, y, 0.6, 'thin', 'paper'), text(x, y + 0.25, 'SD', 0.55, { anchor: 'middle' })],
+      hit: { t: 'circle', cx: x, cy: y, r: 0.9 },
+    });
+  });
+
+  els.push(dimension('dim-unit-width', 'Overall unit width', [0, -5], [uw, -5], k));
+  els.push(dimension('dim-unit-depth', 'Overall unit depth', [-5, 0], [-5, ud], k));
+  els.push(drawingTitle(0, ud + 8, '1', 'A-402', 'ENLARGED UNIT REFLECTED CEILING PLAN', '1/4" = 1\'-0"', k));
+  els.push({
+    id: 'rcp-note',
+    role: 'note',
+    name: 'Ceiling plan notes',
+    marks: [text(0, ud + 13, 'CEILING HEIGHTS ARE ABOVE THE FINISHED FLOOR. HATCHED AREAS ARE LOWERED CEILINGS.', 0.8)],
+  });
+  els.push({
+    id: 'back-reference',
+    role: 'sheet-reference',
+    name: 'Reference to the unit floor plan (A-401)',
+    link: 'A-401',
+    marks: [text(0, ud + 15.5, 'SEE A-401 FOR THE FLOOR PLAN OF THIS UNIT.', 0.8)],
+    hit: hitRect(0, ud + 14.4, 24, 1.7),
+  });
+  els.push(scaleBar(0, ud + 19.6, 2, k));
+  els.push(northArrow(uw + 10, ud + 9, k));
+  els.push(...titleBlock(bounds, { project: PROJECT, title: 'UNIT CEILING PLAN', sheet: 'A-402', scale: '1/4" = 1\'-0"' }, k));
+
+  const snaps: Pt[] = [];
+  for (const x of [0, BATH_W, BED_W, uw]) for (const y of [0, BED_D, yKitchen, yBath, ud]) snaps.push([x, y]);
+  return { sheet: { id: 'A-402', title: 'Enlarged unit reflected ceiling plan', discipline: 'A', scale: { label: '1/4" = 1\'-0"', ftPerInch: 4 }, bounds, elements: els, snaps }, lights: lights.length };
+}
+
 function build(params: Record<string, number>): PlanSet {
   const n = params.bays;
   const uw = params.unit_width;
@@ -679,8 +953,11 @@ function build(params: Record<string, number>): PlanSet {
   const site = sitePlan(L, D, front, side, rear);
   const floor = floorPlan(n, uw, ud, cw, sw);
   const section = buildingSection(ud, cw, storeys, ftf);
+  const roof = roofPlan(n, uw, ud, cw, sw);
+  const elevation = southElevation(n, uw, sw, storeys, ftf);
   const a401 = unitPlan(uw, ud);
-  const drawings = [site, floor, section, a401];
+  const ceiling = unitCeilingPlan(uw, ud);
+  const drawings = [site, floor, roof, elevation, section, a401, ceiling.sheet];
   const sheets = [coverSheet([{ id: 'G-001', title: 'Cover sheet and sheet index' }, ...drawings], storeys), ...drawings];
 
   return {
@@ -724,12 +1001,28 @@ function build(params: Record<string, number>): PlanSet {
       rear_setback: rear,
       easement_width: EASEMENT,
       footprint_sf: L * D,
+      rear_yard: rear + REAR_YARD, // rear property line to the back of the building
       // section (A-301)
       storeys,
       floor_to_floor: ftf,
       building_height: storeys * ftf,
       total_gsf: storeys * L * D,
       total_units: storeys * (oneBeds + twoBeds),
+      // roof plan (A-103)
+      roof_sf: L * D,
+      roof_drain_count: ROOF_DRAINS,
+      rooftop_unit_count: n,
+      // south elevation (A-201)
+      south_windows_per_floor: n - 1,
+      south_window_count: storeys * (n - 1),
+      parapet_height: PARAPET,
+      overall_height: storeys * ftf + PARAPET,
+      sill_height: SILL,
+      // unit ceiling plan (A-402)
+      light_count: ceiling.lights,
+      ceiling_height: CEILING,
+      soffit_height: SOFFIT,
+      soffit_sf: BATH_W * BATH_D + (BED_W - BATH_W) * BATH_D + (uw - BED_W) * KITCHEN_D,
     },
   };
 }
@@ -737,7 +1030,7 @@ function build(params: Record<string, number>): PlanSet {
 export const MF_DOUBLE_LOADED: PlanSetDef = {
   id: 'mf-double-loaded',
   title: 'Multifamily typical floor, double-loaded corridor',
-  blurb: 'Cover sheet, site plan, one apartment floor plan (stairs, elevator core, corridor, one- and two-bed units), a building section and an enlarged one-bed unit plan.',
+  blurb: 'Eight sheets for one small apartment building: cover, site plan, typical floor plan, roof plan, south elevation, building section, enlarged one-bed unit plan and its reflected ceiling plan.',
   defaults: { bays: 5, unit_width: 26, unit_depth: 30, corridor_width: 6, stair_width: 10, storeys: 4, floor_to_floor: 10, front_setback: 15, side_setback: 10, rear_setback: 20 },
   limits: {
     bays: [3, 8],
