@@ -572,6 +572,10 @@ const PlanTask = z.discriminatedUnion('kind', [
       targets: z.array(ElementKey).min(1),
       /** Tempting wrong clicks, each with its own feedback. */
       decoys: z.array(z.object({ match: ElementKey, why: z.string().min(3), category: Category }).strict()).default([]),
+      /** How many elements must be clicked ("click all three fixtures"). Score = (right - wrong) / pick, never below 0. */
+      pick: z.number().int().min(1).max(6).default(1),
+      /** Only elements on this sheet count, e.g. "A-401". Use it when the task is to find the right sheet first. */
+      onSheet: z.string().optional(),
     })
     .strict(),
   // read, measure or compute a number from the drawing; the key is a formula over the plan's facts
@@ -582,9 +586,22 @@ const PlanTask = z.discriminatedUnion('kind', [
       format: Format,
       unit: z.string().optional(),
       tolerance: Tolerance.default({ pct: 0.02 }),
-      /** The ruler: real-world feet, inches on paper (the student applies the scale), or none. */
-      tool: z.enum(['real', 'paper', 'none']).default('real'),
+      /** The ruler: real-world feet, inches on paper (the student applies the scale), an area tool, or none. */
+      tool: z.enum(['real', 'paper', 'area', 'none']).default('real'),
       mistakes: z.array(NumericMistake).min(1),
+    })
+    .strict(),
+  // say which sheet to open: the options are the sheets of the set
+  z
+    .object({
+      kind: z.literal('navigate'),
+      /** Optional element to outline, e.g. the callout whose reference is being asked about. */
+      highlight: ElementKey.optional(),
+      correctSheet: z.string().min(1),
+      /** Sheet numbers that are NOT in the set, offered as extra wrong answers. */
+      distractorSheets: z.array(z.string().min(1)).default([]),
+      /** Shown when the wrong sheet is chosen. */
+      why: z.string().min(3),
     })
     .strict(),
   // name the highlighted element or symbol
@@ -611,7 +628,7 @@ const PlanItem = z
         set: z.string().min(1),
         /** Parameter sets for the generator. One is chosen per attempt, so the drawing and the answer change. */
         variants: z.array(z.record(z.string(), z.number())).min(1),
-        /** The sheet shown first, e.g. "A-201". */
+        /** The sheet shown first, e.g. "A-102". */
         sheet: z.string().min(1),
       })
       .strict(),

@@ -271,3 +271,37 @@ export function border(bounds: { x: number; y: number; w: number; h: number }, k
     marks: [rect(bounds.x + 2 * k, bounds.y + 2 * k, bounds.w - 4 * k, bounds.h - 4 * k, 'medium')],
   };
 }
+
+/**
+ * A section cut marker: a split bubble (section letter over the sheet it is drawn on)
+ * with a solid pointer showing which way the section looks.
+ * `look` is a unit vector for the viewing direction.
+ */
+export function sectionHead(id: string, name: string, cx: number, cy: number, letter: string, sheet: string, look: Pt, k = 1, link?: string): PlanElement {
+  const r = 2.9 * k;
+  const [lx, ly] = look;
+  // the pointer is a triangle whose tip sits beyond the bubble on the viewing side
+  const tip: Pt = [cx + lx * r * 1.75, cy + ly * r * 1.75];
+  const a: Pt = [cx - ly * r, cy + lx * r];
+  const b: Pt = [cx + ly * r, cy - lx * r];
+  return {
+    id,
+    role: 'section-marker',
+    name,
+    link,
+    marks: [poly([a, tip, b], 'thin', 'solid'), ...bubble(cx, cy, letter, sheet, k)],
+    hit: { t: 'circle', cx, cy, r: r * 1.4 },
+  };
+}
+
+/** A revision delta: a small triangle holding the revision number. */
+export function revisionDelta(id: string, cx: number, cy: number, num: string, k = 1): PlanElement {
+  const h = 2.4 * k;
+  return {
+    id,
+    role: 'revision-delta',
+    name: `Revision delta (revision ${num})`,
+    marks: [poly([[cx, cy - h * 0.62], [cx - h * 0.62, cy + h * 0.45], [cx + h * 0.62, cy + h * 0.45]], 'medium', 'paper'), text(cx, cy + h * 0.3, num, 1.3 * k, { anchor: 'middle', bold: true })],
+    hit: { t: 'circle', cx, cy, r: h * 0.75 },
+  };
+}

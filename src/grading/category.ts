@@ -75,17 +75,41 @@ export function planFor(item: PlanQItem, seed: number): PlanSet {
   return buildPlanSet(item.plan.set, variant);
 }
 
-export function findElement(set: PlanSet, id: string): PlanElement | undefined {
-  for (const sheet of set.sheets) {
-    const el = sheet.elements.find((e) => e.id === id);
-    if (el) return el;
-  }
-  return undefined;
+/**
+ * An element together with the sheet it is on. Element ids repeat between
+ * sheets (every sheet has a "drawing-title"), so a click is always recorded
+ * as "<sheet>/<element id>".
+ */
+export interface Placed {
+  key: string;
+  sheet: string;
+  el: PlanElement;
 }
 
-/** Every clickable element in the set that matches one of the keys. */
-export function matchingElements(set: PlanSet, keys: readonly string[]): PlanElement[] {
-  return set.sheets.flatMap((s) => s.elements.filter((e) => e.hit && keys.some((k) => elementMatches(e, k))));
+export const placedKey = (sheet: string, id: string): string => `${sheet}/${id}`;
+
+/** Every clickable element of the set, with its key. */
+export function placedElements(set: PlanSet): Placed[] {
+  return set.sheets.flatMap((s) => s.elements.filter((e) => e.hit).map((el) => ({ key: placedKey(s.id, el.id), sheet: s.id, el })));
+}
+
+export function findPlaced(set: PlanSet, key: string): Placed | undefined {
+  return placedElements(set).find((p) => p.key === key);
+}
+
+/** Every clickable element that matches one of the question keys (an element id or a role), in the whole set or on one sheet. */
+export function matchingPlaced(set: PlanSet, keys: readonly string[], onSheet?: string): Placed[] {
+  return placedElements(set).filter((p) => (!onSheet || p.sheet === onSheet) && keys.some((k) => elementMatches(p.el, k)));
+}
+
+export function matchingElements(set: PlanSet, keys: readonly string[], onSheet?: string): PlanElement[] {
+  return matchingPlaced(set, keys, onSheet).map((p) => p.el);
+}
+
+/** The elements a locate task accepts. */
+export function locateTargets(item: PlanQItem, set: PlanSet): Placed[] {
+  if (item.task.kind !== 'locate') throw new Error(`${item.id} is not a locate task`);
+  return matchingPlaced(set, item.task.targets, item.task.onSheet);
 }
 
 export interface LocateResult {
@@ -96,15 +120,67 @@ export interface LocateResult {
   picked: string;
 }
 
-export function gradeLocate(item: PlanQItem, set: PlanSet, elementId: string | null): LocateResult {
+/** Grade one click, given as "<sheet>/<element id>". */
+export function gradeLocate(item: PlanQItem, set: PlanSet, key: string | null): LocateResult {
   if (item.task.kind !== 'locate') throw new Error(`${item.id} is not a locate task`);
-  if (!elementId) return { correct: false, message: 'Nothing was selected.', category: 'incomplete', picked: '(nothing)' };
-  const el = findElement(set, elementId);
-  if (!el) return { correct: false, message: 'Nothing was selected.', category: 'incomplete', picked: '(nothing)' };
-  if (item.task.targets.some((k) => elementMatches(el, k))) return { correct: true, message: '', picked: el.name };
-  const decoy = item.task.decoys.find((d) => elementMatches(el, d.match));
-  if (decoy) return { correct: false, message: decoy.why, category: decoy.category, picked: el.name };
-  return { correct: false, message: `You clicked: ${el.name}.`, category: 'concept', picked: el.name };
+  const hit = key ? findPlaced(set, key) : undefined;
+  if (!hit) return { correct: false, message: 'Nothing was selected.', category: 'incomplete', picked: '(nothing)' };
+  if (locateTargets(item, set).some((t) => t.key === hit.key)) return { correct: true, message: '', picked: hit.el.name };
+  const decoy = item.task.decoys.find((d) => elementMatches(hit.el, d.match));
+  if (decoy) return { correct: false, message: decoy.why, category: decoy.category, picked: hit.el.name };
+  return { correct: false, message: `You clicked: ${hit.el.name}.`, category: 'concept', picked: hit.el.name };
+}
+
+export interface LocateManyResult {
+  /** (right picks - wrong picks) / picks needed, between 0 and 1. */
+  score: number;
+  right: string[];
+  wrong: string[];
+  /** Feedback for the first wrong pick, if any. */
+  message: string;
+  category?: MistakeCategory;
+  picked: string;
+}
+
+/** "Click all three": every pick is checked, and a wrong pick cancels a right one. Picks are "<sheet>/<element id>" keys. */
+export function gradeLocateMany(item: PlanQItem, set: PlanSet, keys: readonly string[]): LocateManyResult {
+  if (item.task.kind !== 'locate') throw new Error(`${item.id} is not a locate task`);
+  const picks = [...new Set(keys)];
+  const right: string[] = [];
+  const wrong: string[] = [];
+  let message = '';
+  let category: MistakeCategory | undefined;
+  for (const key of picks) {
+    const res = gradeLocate(item, set, key);
+    if (res.correct) right.push(key);
+    else {
+      wrong.push(key);
+      if (!message) {
+        message = res.message;
+        category = res.category;
+      }
+    }
+  }
+  const need = item.task.pick;
+  const score = Math.max(0, Math.min(1, (Math.min(right.length, need) - wrong.length) / need));
+  if (!message && right.length < need) {
+    message = picks.length === 0 ? 'Nothing was selected.' : `You found ${right.length} of ${need}.`;
+    category = 'incomplete';
+  }
+  return { score, right, wrong, message, category, picked: picks.map((k) => findPlaced(set, k)?.el.name ?? k).join('; ') || '(nothing)' };
+}
+
+export interface SheetOption {
+  sheet: string;
+  correct: boolean;
+}
+
+/** The sheets offered in a navigate task: every sheet of the set plus any distractors, shuffled. */
+export function navigateOptions(item: PlanQItem, set: PlanSet, rng: Rng): SheetOption[] {
+  if (item.task.kind !== 'navigate') throw new Error(`${item.id} is not a navigate task`);
+  const t = item.task;
+  const ids = [...new Set([...set.sheets.map((s) => s.id), ...t.distractorSheets])];
+  return shuffle(rng, ids.map((sheet) => ({ sheet, correct: sheet === t.correctSheet })));
 }
 
 /** A measure task is graded exactly like a numeric question whose variables are the plan's facts. */

@@ -9,17 +9,19 @@ import { seededRng } from '../../engine/rng';
 import { renderTemplate, sampleVars } from '../../engine/variables';
 import {
   gradeDocReview,
-  gradeLocate,
+  gradeLocateMany,
   gradeMeasure,
   identifyOptions,
   JUDGMENT_LABEL,
   JUDGMENT_SCORE,
   judgmentOptions,
-  matchingElements,
+  locateTargets,
+  matchingPlaced,
+  navigateOptions,
   planFor,
   renderDocument,
   type DocReviewResult,
-  type LocateResult,
+  type LocateManyResult,
 } from '../../grading/category';
 import type { NumericResult } from '../../grading/simple';
 import { PlanViewer } from '../plan/PlanViewer';
@@ -258,40 +260,51 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
   const set = useMemo(() => planFor(item, seed), [item, seed]);
   const task = item.task;
   const [sheetId, setSheetId] = useState(item.plan.sheet);
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
   const [typed, setTyped] = useState('');
   const [choice, setChoice] = useState<number | null>(null);
   const [hints, setHints] = useState(0);
-  const [locate, setLocate] = useState<LocateResult | null>(null);
+  const [located, setLocated] = useState<LocateManyResult | null>(null);
   const [numeric, setNumeric] = useState<NumericResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const options = useMemo(() => (task.kind === 'identify' ? identifyOptions(item, seededRng(item.id, seed, 'options')) : []), [item, seed, task.kind]);
-  const targets = useMemo(() => (task.kind === 'locate' ? matchingElements(set, task.targets) : []), [set, task]);
-  const highlighted = useMemo(() => (task.kind === 'identify' ? matchingElements(set, [task.highlight]).map((e) => e.id) : []), [set, task]);
+  // identify: named options; navigate: the sheets of the set
+  const options = useMemo(() => {
+    const rng = seededRng(item.id, seed, 'options');
+    if (task.kind === 'identify') return identifyOptions(item, rng).map((o) => ({ text: o.text, correct: o.correct, why: o.why, category: o.category }));
+    if (task.kind === 'navigate') return navigateOptions(item, set, rng).map((o) => ({ text: o.sheet, correct: o.correct, why: task.why, category: 'concept' as const }));
+    return [];
+  }, [item, seed, task, set]);
+  const targets = useMemo(() => (task.kind === 'locate' ? locateTargets(item, set) : []), [item, set, task.kind]);
+  const highlighted = useMemo(
+    () => ((task.kind === 'identify' || task.kind === 'navigate') && task.highlight ? matchingPlaced(set, [task.highlight]).map((p) => p.key) : []),
+    [set, task],
+  );
   const text = (s: string) => renderTemplate(s, set.facts, []);
+  const need = task.kind === 'locate' ? task.pick : 1;
+  const correctText = options.find((o) => o.correct)?.text ?? '';
 
   const submit = useCallback(
     (confidence: number | null, gaveUp = false) => {
       if (graded) return;
       const common = { confidence, hints, sawSolution: gaveUp };
       if (task.kind === 'locate') {
-        const res = gradeLocate(item, set, gaveUp ? null : picked);
-        setLocate(res);
-        const right = res.correct && !gaveUp;
+        const res = gradeLocateMany(item, set, gaveUp ? [] : picked);
+        setLocated(res);
+        const score = gaveUp ? 0 : res.score;
         onGraded({
           ...common,
-          score: right ? 1 : 0,
-          category: right || gaveUp ? undefined : res.category,
+          score,
+          category: score >= 0.999 || gaveUp ? undefined : res.category,
           given: res.picked,
-          expected: targets[0]?.name,
-          detail: gaveUp ? 'Viewed the solution.' : right ? undefined : res.message,
+          expected: targets
+            .slice(0, Math.max(need, 1))
+            .map((t) => t.el.name)
+            .join('; '),
+          detail: gaveUp ? 'Viewed the solution.' : score >= 0.999 ? undefined : res.message,
         });
-        const first = targets[0];
-        if (first && !right) {
-          const home = set.sheets.find((s) => s.elements.includes(first));
-          if (home) setSheetId(home.id);
-        }
+        // show the sheet the answer is on
+        if (targets[0] && score < 0.999) setSheetId(targets[0].sheet);
       } else if (task.kind === 'measure') {
         const res = gradeMeasure(item, set, gaveUp ? '' : typed);
         setNumeric(res);
@@ -312,22 +325,24 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
           score: right ? 1 : 0,
           category: right || gaveUp ? undefined : opt?.category,
           given: opt?.text,
-          expected: task.correct,
+          expected: correctText,
           detail: gaveUp ? 'Viewed the solution.' : right ? undefined : opt?.why,
         });
+        if (task.kind === 'navigate') setSheetId(task.correctSheet);
       }
     },
-    [graded, task, item, set, picked, typed, choice, options, hints, targets, onGraded],
+    [graded, task, item, set, picked, typed, choice, options, hints, targets, need, correctText, onGraded],
   );
 
   const reveal = !graded
     ? null
     : task.kind === 'locate'
-      ? { good: targets.map((t) => t.id), bad: picked && !locate?.correct ? [picked] : [] }
+      ? { good: targets.map((t) => t.key), bad: located?.wrong ?? [] }
       : { good: highlighted, bad: [] };
-  const ready = task.kind === 'locate' ? picked !== null : task.kind === 'measure' ? typed.trim() !== '' : choice !== null;
+  const ready = task.kind === 'locate' ? picked.length >= need : task.kind === 'measure' ? typed.trim() !== '' : choice !== null;
   const chosen = choice !== null ? options[choice] : null;
-  const right = task.kind === 'locate' ? Boolean(locate?.correct) : task.kind === 'measure' ? Boolean(numeric?.correct) : Boolean(chosen?.correct);
+  const score = task.kind === 'locate' ? (located?.score ?? 0) : task.kind === 'measure' ? (numeric?.correct ? 1 : 0) : chosen?.correct ? 1 : 0;
+  const right = score >= 0.999;
 
   return (
     <>
@@ -337,6 +352,7 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
         sheetId={sheetId}
         onSheetChange={setSheetId}
         pick={task.kind === 'locate'}
+        pickCount={need}
         selected={picked}
         onPick={setPicked}
         highlight={highlighted}
@@ -364,8 +380,8 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
         </div>
       )}
 
-      {task.kind === 'identify' && (
-        <div className="options" role="radiogroup" aria-label="Answer options" style={{ marginTop: 14 }}>
+      {(task.kind === 'identify' || task.kind === 'navigate') && (
+        <div className={`options${task.kind === 'navigate' ? ' sheets' : ''}`} role="radiogroup" aria-label={task.kind === 'navigate' ? 'Sheets' : 'Answer options'} style={{ marginTop: 14 }}>
           {options.map((o, i) => {
             const cls = ['option'];
             if (graded) {
@@ -373,10 +389,10 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
               else if (i === choice) cls.push('wrong');
             } else if (i === choice) cls.push('picked');
             return (
-              <button key={i} type="button" role="radio" aria-checked={i === choice} className={cls.join(' ')} disabled={graded} onClick={() => setChoice(i)}>
-                <span className="option-key">{'ABCDE'[i]}</span>
+              <button key={o.text} type="button" role="radio" aria-checked={i === choice} className={cls.join(' ')} disabled={graded} onClick={() => setChoice(i)}>
+                <span className="option-key">{'ABCDEFGH'[i]}</span>
                 <span>
-                  {o.text}
+                  {task.kind === 'navigate' ? <span className="sheet-id">{o.text}</span> : o.text}
                   {graded && i === choice && !o.correct && o.why && <div className="option-why">{o.why}</div>}
                 </span>
               </button>
@@ -394,18 +410,20 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
 
       {graded && (
         <Feedback
-          kind={right ? 'ok' : 'bad'}
+          kind={right ? 'ok' : score > 0 ? 'part' : 'bad'}
           title={
             right
               ? 'Correct'
               : task.kind === 'locate'
-                ? `Not quite. The right answer is outlined in green: ${targets[0]?.name ?? ''}`
+                ? need > 1
+                  ? `${located?.right.length ?? 0} of ${need} found${located?.wrong.length ? `, ${located.wrong.length} wrong` : ''}. The answers are outlined in green`
+                  : `Not quite. The right answer is outlined in green: ${targets[0]?.el.name ?? ''}${targets[0] && targets[0].sheet !== item.plan.sheet ? ` (sheet ${targets[0].sheet})` : ''}`
                 : task.kind === 'measure'
                   ? `The answer is ${numeric?.expectedText ?? ''}`
-                  : `The answer is ${task.correct}`
+                  : `The answer is ${correctText}`
           }
         >
-          {!right && task.kind === 'locate' && locate?.message && <p>{locate.message}</p>}
+          {!right && task.kind === 'locate' && located?.message && <p>{located.message}</p>}
           {!right && task.kind === 'measure' && numeric && numeric.parsed !== null && (
             <p>
               <strong>{numeric.category ? `${MISTAKE_LABELS[numeric.category]}: ` : ''}</strong>

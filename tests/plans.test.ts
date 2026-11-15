@@ -85,6 +85,10 @@ describe('every plan set', () => {
                   expect(inside(shape.x1, shape.y1) && inside(shape.x2, shape.y2), `${sheet.id}/${el.id} is off the sheet`).toBe(true);
                 } else if (shape.t === 'circle') {
                   expect(inside(shape.cx - shape.r, shape.cy - shape.r) && inside(shape.cx + shape.r, shape.cy + shape.r), `${sheet.id}/${el.id} is off the sheet`).toBe(true);
+                } else if (shape.t === 'cloud') {
+                  expect(inside(shape.x - shape.r, shape.y - shape.r) && inside(shape.x + shape.w + shape.r, shape.y + shape.h + shape.r), `${sheet.id}/${el.id} is off the sheet`).toBe(true);
+                } else if (shape.t === 'poly') {
+                  for (const [x, y] of shape.pts) expect(inside(x, y), `${sheet.id}/${el.id} is off the sheet`).toBe(true);
                 } else if (shape.t === 'text') {
                   expect(inside(shape.x, shape.y), `${sheet.id}/${el.id} text is off the sheet`).toBe(true);
                 }
@@ -109,24 +113,24 @@ describe('mf-double-loaded: facts agree with what is drawn', () => {
     it(JSON.stringify(params), () => {
       const set = buildPlanSet('mf-double-loaded', params);
       const f = set.facts;
-      const floor = set.sheets.find((s) => s.id === 'A-201')!;
+      const floor = set.sheets.find((s) => s.id === 'A-102')!;
 
       // counts: one drawn unit per unit, by type
       const units = floor.elements.filter((e) => e.role === 'unit');
       expect(units.length).toBe(f.unit_count);
       expect(units.filter((u) => u.name.includes('1BR')).length).toBe(f.one_bed_count);
       expect(units.filter((u) => u.name.includes('2BR')).length).toBe(f.two_bed_count);
-      expect(count(set, 'A-201', 'stair')).toBe(2);
-      expect(count(set, 'A-201', 'elevator')).toBe(1);
+      expect(count(set, 'A-102', 'stair')).toBe(2);
+      expect(count(set, 'A-102', 'elevator')).toBe(1);
       // every unit has its own entry door
       for (const u of units) expect(floor.elements.some((e) => e.id === `door-${u.id.slice(5)}`), `${u.id} has no door`).toBe(true);
 
       // areas: the parts add up to the whole floor, with no gaps or overlaps
-      const unitArea = areaOf(set, 'A-201', ['unit']);
+      const unitArea = areaOf(set, 'A-102', ['unit']);
       expect(unitArea).toBeCloseTo(f.rentable_sf, 6);
       expect(unitArea + f.corridor_sf + f.stair_sf + f.core_sf).toBeCloseTo(f.floor_gsf, 6);
-      expect(areaOf(set, 'A-201', ['corridor'])).toBeCloseTo(f.corridor_sf, 6);
-      expect(areaOf(set, 'A-201', ['core'])).toBeCloseTo(f.core_sf, 6);
+      expect(areaOf(set, 'A-102', ['corridor'])).toBeCloseTo(f.corridor_sf, 6);
+      expect(areaOf(set, 'A-102', ['core'])).toBeCloseTo(f.core_sf, 6);
       expect(f.floor_gsf).toBeCloseTo(f.building_length * f.building_depth, 6);
       expect(f.avg_unit_sf).toBeCloseTo(f.rentable_sf / f.unit_count, 6);
       // each drawn unit's clickable area is inside its own rectangle, and unit areas match their type
@@ -165,8 +169,79 @@ describe('mf-double-loaded: facts agree with what is drawn', () => {
       expect(f.closet_sf, 'the closet must have positive depth').toBeGreaterThan(0);
       expect(f.bedroom_sf).toBe(f.bed_width * f.bed_depth);
 
+      // the site plan (C-101): lot, setbacks, easement and footprint agree with the facts
+      const site = set.sheets.find((s) => s.id === 'C-101')!;
+      const rectOf = (el: { marks: { shape: { t: string } }[] }) => el.marks[0].shape as { t: 'rect'; x: number; y: number; w: number; h: number };
+      const footprint = rectOf(site.elements.find((e) => e.role === 'building-footprint')!);
+      expect(footprint.w).toBe(length);
+      expect(footprint.h).toBe(depth);
+      expect(footprint.w * footprint.h).toBe(f.footprint_sf);
+      expect(f.footprint_sf).toBe(f.floor_gsf);
+      expect(f.lot_sf).toBe(f.lot_width * f.lot_depth);
+      const lineOf = (id: string) => site.elements.find((e) => e.id === id)!.marks[0].shape as { t: 'line'; x1: number; y1: number; x2: number; y2: number };
+      // property lines form the lot rectangle
+      expect(lineOf('property-line-north').x2 - lineOf('property-line-north').x1).toBe(f.lot_width);
+      expect(lineOf('property-line-west').y2 - lineOf('property-line-west').y1).toBe(f.lot_depth);
+      // each setback line is the stated distance inside its property line
+      expect(f.lot_depth - lineOf('setback-front').y1).toBe(f.front_setback);
+      expect(lineOf('setback-rear').y1).toBe(f.rear_setback);
+      expect(lineOf('setback-west').x1).toBe(f.side_setback);
+      expect(f.lot_width - lineOf('setback-east').x1).toBe(f.side_setback);
+      // the building sits on the front setback line and inside all the others
+      expect(footprint.y + footprint.h).toBe(f.lot_depth - f.front_setback);
+      expect(footprint.x).toBeGreaterThanOrEqual(f.side_setback);
+      expect(footprint.x + footprint.w).toBeLessThanOrEqual(f.lot_width - f.side_setback);
+      expect(footprint.y).toBeGreaterThanOrEqual(f.rear_setback);
+      // the easement is a strip of the stated width along the rear, clear of the building
+      const easement = rectOf(site.elements.find((e) => e.role === 'easement')!);
+      expect(easement.h).toBe(f.easement_width);
+      expect(easement.w).toBe(f.lot_width);
+      expect(footprint.y).toBeGreaterThan(easement.y + easement.h);
+      expect(site.elements.filter((e) => e.role === 'property-line').length).toBe(4);
+      expect(site.elements.filter((e) => e.role === 'setback-line').length).toBe(4);
+      expect(site.scale.ftPerInch).toBe(20);
+      // the setback dimension strings are as long as the setbacks
+      const dimLength = (id: string) => {
+        const d = lineOf(id);
+        return Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
+      };
+      expect(dimLength('dim-front-setback')).toBe(f.front_setback);
+      expect(dimLength('dim-rear-setback')).toBe(f.rear_setback);
+      expect(dimLength('dim-side-setback')).toBe(f.side_setback);
+      expect(dimLength('dim-lot-width')).toBe(f.lot_width);
+      expect(dimLength('dim-lot-depth')).toBe(f.lot_depth);
+
+      // the building section (A-301): one level marker per floor plus the roof, at the right heights
+      const section = set.sheets.find((s) => s.id === 'A-301')!;
+      const levels = section.elements.filter((e) => e.role === 'level-marker');
+      expect(levels.length).toBe(f.storeys + 1);
+      expect(section.elements.filter((e) => e.role === 'floor-slab').length).toBe(f.storeys);
+      expect(f.building_height).toBe(f.storeys * f.floor_to_floor);
+      const height = section.elements.find((e) => e.id === 'dim-height')!.marks[0].shape as { t: 'line'; y1: number; y2: number };
+      expect(Math.abs(height.y2 - height.y1)).toBe(f.building_height);
+      const across = section.elements.find((e) => e.id === 'dim-section-depth')!.marks[0].shape as { t: 'line'; x1: number; x2: number };
+      expect(Math.abs(across.x2 - across.x1)).toBe(depth);
+      expect(f.total_units).toBe(f.storeys * f.unit_count);
+      expect(f.total_gsf).toBe(f.storeys * f.floor_gsf);
+
+      // the floor plan carries a section marker at each end of the cut, pointing at the section sheet, and a revision cloud with its delta
+      const markers = floor.elements.filter((e) => e.role === 'section-marker');
+      expect(markers.length).toBe(2);
+      for (const m of markers) expect(m.link).toBe('A-301');
+      expect(floor.elements.filter((e) => e.role === 'revision-cloud').length).toBe(1);
+      expect(floor.elements.filter((e) => e.role === 'revision-delta').length).toBe(1);
+      // the cut line runs through apartments, clear of the stairs and of every door
+      const cut = floor.elements.find((e) => e.id === 'section-line')!.marks[0].shape as { t: 'line'; x1: number };
+      expect(cut.x1).toBeLessThan(length - p.stair_width);
+      expect(cut.x1).toBeGreaterThan(p.stair_width);
+
+      // sheets are in set order and numbered by the discipline + sheet-type convention
+      expect(set.sheets.map((s) => s.id)).toEqual(['G-001', 'C-101', 'A-102', 'A-301', 'A-401']);
+      for (const sh of set.sheets) expect(sh.id.startsWith(`${sh.discipline}-`), sh.id).toBe(true);
+
       // navigation: the floor plan calls out the enlarged plan, the cover indexes every sheet
       expect(floor.elements.find((e) => e.role === 'detail-callout')?.link).toBe('A-401');
+      expect(section.elements.find((e) => e.role === 'sheet-reference')?.link).toBe('A-102');
       const cover = set.sheets.find((s) => s.id === 'G-001')!;
       expect(cover.elements.filter((e) => e.role === 'index-row').map((e) => e.link).sort()).toEqual(set.sheets.map((s) => s.id).sort());
       // scales

@@ -100,7 +100,7 @@ All 14 core types (see `CLAUDE.md`), plus four built for categories:
 |---|---|---|---|
 | `judgment` | Chooses the best response to a scenario | `options[{ text, rating: 'best' \| 'acceptable' \| 'poor', why, category? }]` (3 to 5, exactly one `best`), `explanation`, optional `vars` | best 1, acceptable 0.5, poor 0. Every option's `why` is shown afterwards. |
 | `docreview` | Flags the lines of a document that contain a problem | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]` (1 to 5), `vars`, `explanation` | (issues found - wrong flags) / issues, floor 0. Needs at least as many clean lines as issues. Headings and totals cannot be flagged. |
-| `plan` | Clicks, measures or names something on a generated drawing | `plan { set, variants[], sheet }`, `task` of kind `locate` (targets, decoys), `measure` (answer formula over plan facts, mistakes, tool) or `identify` (highlight, correct, distractors) | right or wrong; measure tasks use a tolerance |
+| `plan` | Clicks, measures or names something on a generated drawing, or says which sheet to open | `plan { set, variants[], sheet }`, `task` of kind `locate` (targets, decoys, `pick`, `onSheet`), `measure` (answer formula over plan facts, mistakes, tool), `identify` (highlight, correct, distractors) or `navigate` (correctSheet, distractorSheets) | right or wrong; measure tasks use a tolerance; a multi-pick locate scores (right - wrong) / picks |
 | `leasesim` | Reads, corrects or predicts with the lease-by-lease simulator | `scenario`, `variants`, `editable`, `task` of kind `read` (answer formula over report facts, mistakes), `configure` (target inputs, checks) or `shock` (change, output, band, trap) | read: right or wrong; configure: share of checked report lines that match; shock: half for direction, full with the size |
 
 A spec may ask for a NEW type (for example `leasesim` in the ARGUS spec). Follow "Adding a new question type" in `CLAUDE.md`, add the label to `ALL_TYPE_LABELS` only, and add a section for the type to `tests/category-content.test.ts` modelled on the `plan` section.
@@ -158,7 +158,7 @@ The owner asked (2026-11-14) for the hardest work to be done first, while the Fa
 | Step | Session | Why it is here |
 |---|---|---|
 | 1 (done 2026-11-14) | `argus` chunk 4: lease engine, simulator component, `leasesim` type, 9 questions | The only part of Commercial Leases that needs new engineering. Done first, it unblocks the whole 70-question category for any model. It does not depend on ARGUS chunks 1 to 3 |
-| 2 | `plan-reading` chunk 1: viewer extensions, 19 questions | Every later plan-reading chunk builds on these viewer features |
+| 2 (done 2026-11-15) | `plan-reading` chunk 1: viewer extensions, site plan and section sheets, 19 questions | Every later plan-reading chunk builds on these viewer features |
 | 3 | `plan-reading` chunk 2: site plan, section, elevation and roof plan sheets, 18 questions | New drawing generators |
 | 4 | `plan-reading` chunk 3: retail, office and mixed-use podium plan sets, 12 questions | The largest drawing-generation job in the app |
 | 5 | `plan-reading` chunk 4: takeoff attachment for grid questions, 18 questions | Touches the grid types additively; the existing grid tests must pass untouched |

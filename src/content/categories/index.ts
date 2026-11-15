@@ -62,6 +62,12 @@ function check(item: Item, folder: string): void {
     for (const variant of item.plan.variants) {
       const set = buildPlanSet(item.plan.set, variant); // throws on a bad parameter
       if (!set.sheets.some((s) => s.id === item.plan.sheet)) fail(item.id, `plan set has no sheet "${item.plan.sheet}"`);
+      if (item.task.kind === 'navigate' && !set.sheets.some((s) => s.id === (item.task as { correctSheet: string }).correctSheet)) {
+        fail(item.id, `the correct sheet is not in the plan set`);
+      }
+      if (item.task.kind === 'locate' && item.task.onSheet && !set.sheets.some((s) => s.id === (item.task as { onSheet?: string }).onSheet)) {
+        fail(item.id, `onSheet names a sheet that is not in the plan set`);
+      }
     }
   }
 }

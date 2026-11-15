@@ -1908,3 +1908,14 @@ ul.objectives {
   border-top: 1px solid var(--border);
   border-radius: 0 0 14px 14px;
 }
+
+/* sheet choices in a "which sheet?" plan question */
+.options.sheets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.sheet-id {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

@@ -19,7 +19,7 @@ export const ITEMS = categoryItems('plan-reading', [
     plan: {
       set: 'mf-double-loaded',
       variants: [{ bays: 5 }, { bays: 6, unit_width: 24 }, { bays: 7, unit_width: 24, unit_depth: 28 }],
-      sheet: 'A-201',
+      sheet: 'A-102',
     },
     task: {
       kind: 'locate',
@@ -41,7 +41,7 @@ export const ITEMS = categoryItems('plan-reading', [
     topic: 'plan-reading-program',
     title: 'Floor efficiency from a plan',
     prompt:
-      'This is one floor of an apartment building. Using the dimension strings on sheet A-201, work out the floor’s efficiency: the area inside the apartments divided by the gross floor area. Dimensions are to wall centrelines, so you can multiply them directly.',
+      'This is one floor of an apartment building. Using the dimension strings on sheet A-102, work out the floor’s efficiency: the area inside the apartments divided by the gross floor area. Dimensions are to wall centrelines, so you can multiply them directly.',
     tags: ['efficiency', 'gross area', 'rentable area', 'dimension strings'],
     estMinutes: 5,
     hints: [
@@ -57,7 +57,7 @@ export const ITEMS = categoryItems('plan-reading', [
         { bays: 7, unit_width: 24, unit_depth: 28 },
         { bays: 6, unit_width: 26, unit_depth: 30 },
       ],
-      sheet: 'A-201',
+      sheet: 'A-102',
     },
     task: {
       kind: 'measure',

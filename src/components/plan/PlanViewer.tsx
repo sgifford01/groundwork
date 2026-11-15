@@ -10,10 +10,10 @@
  * the parent question grades it (src/grading/category.ts).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { distance, feetInches, paperInches, sheetById, type Mark, type PlanElement, type PlanSet, type Pt, type Shape } from '../../plans/model';
+import { distance, feetInches, paperInches, polygonArea, sheetById, type Mark, type PlanElement, type PlanSet, type Pt, type Shape } from '../../plans/model';
 import './plan.css';
 
-const PEN_WIDTH: Record<string, number> = { wall: 0.6, medium: 0.22, thin: 0.09, dash: 0.14, center: 0.07, none: 0 };
+const PEN_WIDTH: Record<string, number> = { wall: 0.6, medium: 0.22, thin: 0.09, dash: 0.14, center: 0.07, phantom: 0.16, none: 0 };
 
 interface View {
   x: number;
@@ -28,14 +28,17 @@ export interface PlanViewerProps {
   onSheetChange: (id: string) => void;
   /** Clicking an element selects it as the answer. */
   pick?: boolean;
-  selected?: string | null;
-  onPick?: (elementId: string | null) => void;
-  /** Element ids to outline before grading (for "what is this?" questions). */
+  /** How many elements the answer needs. With 1, a new click replaces the old one. */
+  pickCount?: number;
+  /** Selected elements, as "<sheet>/<element id>" keys (element ids repeat between sheets). */
+  selected?: string[];
+  onPick?: (keys: string[]) => void;
+  /** Keys ("<sheet>/<element id>") to outline before grading (for "what is this?" questions). */
   highlight?: string[];
-  /** After grading: ids to show as right and wrong. Also turns on element names. */
+  /** After grading: keys to show as right and wrong. Also turns on element names. */
   reveal?: { good: string[]; bad: string[] } | null;
-  /** The ruler: real feet, inches on paper, or no ruler. */
-  tool?: 'real' | 'paper' | 'none';
+  /** The ruler: real feet, inches on paper, an area tool (click the corners of a shape), or none. */
+  tool?: 'real' | 'paper' | 'area' | 'none';
 }
 
 function arcPath(s: Extract<Shape, { t: 'arc' }>): string {
@@ -47,6 +50,21 @@ function arcPath(s: Extract<Shape, { t: 'arc' }>): string {
   return `M${x1} ${y1} A${s.r} ${s.r} 0 0 ${s.to > s.from ? 1 : 0} ${x2} ${y2}`;
 }
 
+/** A scalloped outline: semicircular bumps marching clockwise round a rectangle. */
+function cloudPath(s: Extract<Shape, { t: 'cloud' }>): string {
+  const corners: Pt[] = [[s.x, s.y], [s.x + s.w, s.y], [s.x + s.w, s.y + s.h], [s.x, s.y + s.h]];
+  let d = `M${s.x} ${s.y}`;
+  for (let i = 0; i < 4; i++) {
+    const [x1, y1] = corners[i];
+    const [x2, y2] = corners[(i + 1) % 4];
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    const bumps = Math.max(2, Math.round(length / (2 * s.r)));
+    const r = length / bumps / 2;
+    for (let b = 1; b <= bumps; b++) d += ` A${r} ${r} 0 0 1 ${x1 + ((x2 - x1) * b) / bumps} ${y1 + ((y2 - y1) * b) / bumps}`;
+  }
+  return `${d} Z`;
+}
+
 function MarkView({ mark, k }: { mark: Mark; k: number }) {
   const s = mark.shape;
   const cls = `pen-${mark.pen} fill-${mark.fill ?? 'none'}`;
@@ -55,6 +73,7 @@ function MarkView({ mark, k }: { mark: Mark; k: number }) {
   if (s.t === 'line') return <line className={cls} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} strokeWidth={sw} />;
   if (s.t === 'circle') return <circle className={cls} cx={s.cx} cy={s.cy} r={s.r} strokeWidth={sw} />;
   if (s.t === 'arc') return <path className={`pen-${mark.pen} fill-none`} d={arcPath(s)} strokeWidth={sw} />;
+  if (s.t === 'cloud') return <path className={`pen-${mark.pen} fill-none`} d={cloudPath(s)} strokeWidth={sw} />;
   if (s.t === 'poly') {
     const pts = s.pts.map((p) => p.join(',')).join(' ');
     return s.closed === false ? (
@@ -79,19 +98,22 @@ function MarkView({ mark, k }: { mark: Mark; k: number }) {
 }
 
 function HitShape({ shape, ...rest }: { shape: Shape } & React.SVGProps<SVGElement>) {
-  if (shape.t === 'rect') return <rect x={shape.x} y={shape.y} width={shape.w} height={shape.h} rx={0.4} {...(rest as React.SVGProps<SVGRectElement>)} />;
+  if (shape.t === 'rect' || shape.t === 'cloud') return <rect x={shape.x} y={shape.y} width={shape.w} height={shape.h} rx={0.4} {...(rest as React.SVGProps<SVGRectElement>)} />;
   if (shape.t === 'circle') return <circle cx={shape.cx} cy={shape.cy} r={shape.r} {...(rest as React.SVGProps<SVGCircleElement>)} />;
   if (shape.t === 'poly') return <polygon points={shape.pts.map((p) => p.join(',')).join(' ')} {...(rest as React.SVGProps<SVGPolygonElement>)} />;
   return null;
 }
 
-export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected = null, onPick, highlight = [], reveal = null, tool = 'real' }: PlanViewerProps) {
+const NONE: string[] = [];
+
+export function PlanViewer({ set, sheetId, onSheetChange, pick = false, pickCount = 1, selected = NONE, onPick, highlight = [], reveal = null, tool = 'real' }: PlanViewerProps) {
   const sheet = sheetById(set, sheetId) ?? set.sheets[0];
   const k = sheet.scale.ftPerInch / 8;
   const fit = useMemo<View>(() => ({ ...sheet.bounds }), [sheet]);
   const [view, setView] = useState<View>(fit);
   const [measuring, setMeasuring] = useState(false);
   const [points, setPoints] = useState<Pt[]>([]);
+  const [closed, setClosed] = useState(false); // area tool: the outline has been closed
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; view: View; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
@@ -100,6 +122,7 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
   useEffect(() => {
     setView(fit);
     setPoints([]);
+    setClosed(false);
   }, [fit]);
 
   const toModel = useCallback((clientX: number, clientY: number): Pt => {
@@ -168,6 +191,19 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
         p = s;
       }
     }
+    if (tool === 'area') {
+      setPoints((prev) => {
+        if (closed) return [p]; // a finished shape: the next click starts a new one
+        // clicking the first corner again closes the shape
+        if (prev.length >= 3 && distance(prev[0], p) < reach) {
+          setClosed(true);
+          return prev;
+        }
+        return [...prev, p];
+      });
+      if (closed) setClosed(false);
+      return;
+    }
     setPoints((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
   }
 
@@ -184,9 +220,15 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
     }
   }
 
+  const keyOf = (el: PlanElement) => `${sheet.id}/${el.id}`;
+
   function activate(el: PlanElement) {
-    if (pick && !reveal) onPick?.(selected === el.id ? null : el.id);
-    else if (el.link) onSheetChange(el.link);
+    const key = keyOf(el);
+    if (pick && !reveal) {
+      if (selected.includes(key)) onPick?.(selected.filter((k) => k !== key));
+      else if (pickCount <= 1) onPick?.([key]);
+      else if (selected.length < pickCount) onPick?.([...selected, key]);
+    } else if (el.link) onSheetChange(el.link);
   }
 
   function onKeyDown(e: ReactKeyboardEvent) {
@@ -203,14 +245,19 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
   }
 
   const hits = sheet.elements.filter((el) => el.hit);
-  const selectedEl = hits.find((el) => el.id === selected);
-  const measured = points.length === 2 ? distance(points[0], points[1]) : null;
+  const selectedEl = selected.length === 1 ? hits.find((el) => `${sheet.id}/${el.id}` === selected[0]) : undefined;
+  const measured = tool !== 'area' && points.length === 2 ? distance(points[0], points[1]) : null;
   const readout =
-    measured === null
-      ? null
-      : tool === 'paper'
-        ? `${paperInches(measured / sheet.scale.ftPerInch)} on paper`
-        : feetInches(measured);
+    tool === 'area'
+      ? closed
+        ? `${Math.round(polygonArea(points)).toLocaleString('en-US')} SF`
+        : null
+      : measured === null
+        ? null
+        : tool === 'paper'
+          ? `${paperInches(measured / sheet.scale.ftPerInch)} on paper`
+          : feetInches(measured);
+  const centre: Pt | null = points.length ? [points.reduce((n, q) => n + q[0], 0) / points.length, points.reduce((n, q) => n + q[1], 0) / points.length] : null;
   const ui = view.w / 100; // sizes for overlay graphics, so they look the same at any zoom
 
   return (
@@ -228,8 +275,8 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
         </span>
         <div className="plan-tools">
           {tool !== 'none' && (
-            <button type="button" className={`btn small${measuring ? ' primary' : ''}`} aria-pressed={measuring} onClick={() => { setMeasuring((m) => !m); setPoints([]); }}>
-              Measure
+            <button type="button" className={`btn small${measuring ? ' primary' : ''}`} aria-pressed={measuring} onClick={() => { setMeasuring((m) => !m); setPoints([]); setClosed(false); }}>
+              {tool === 'area' ? 'Measure area' : 'Measure'}
             </button>
           )}
           <button type="button" className="btn small" onClick={() => zoomBy(0.7)} aria-label="Zoom in">
@@ -259,6 +306,11 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
         onClickCapture={onClickCapture}
         onKeyDown={onKeyDown}
       >
+        <defs>
+          <pattern id="plan-hatch" width={1.6 * k} height={1.6 * k} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2={1.6 * k} className="plan-hatch-line" strokeWidth={0.12 * k} />
+          </pattern>
+        </defs>
         <rect className="plan-paper" x={sheet.bounds.x} y={sheet.bounds.y} width={sheet.bounds.w} height={sheet.bounds.h} />
         <g className="plan-ink">
           {sheet.elements.map((el) => (
@@ -273,10 +325,11 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
           {hits.map((el, i) => {
             const cls = ['plan-hit'];
             if (el.link) cls.push('link');
-            if (highlight.includes(el.id)) cls.push('hl');
-            if (el.id === selected) cls.push('sel');
-            if (reveal?.good.includes(el.id)) cls.push('good');
-            if (reveal?.bad.includes(el.id)) cls.push('bad');
+            const key = keyOf(el);
+            if (highlight.includes(key)) cls.push('hl');
+            if (selected.includes(key)) cls.push('sel');
+            if (reveal?.good.includes(key)) cls.push('good');
+            if (reveal?.bad.includes(key)) cls.push('bad');
             const interactive = (pick && !reveal) || Boolean(el.link);
             // before grading, names would give answers away, so elements are only numbered
             const label = reveal ? el.name : el.link && !pick ? `Go to sheet ${el.link}` : `Drawing element ${i + 1}`;
@@ -289,7 +342,7 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
                 tabIndex={interactive ? 0 : undefined}
                 role={interactive ? 'button' : undefined}
                 aria-label={label}
-                aria-pressed={pick && !reveal ? el.id === selected : undefined}
+                aria-pressed={pick && !reveal ? selected.includes(key) : undefined}
                 onClick={() => activate(el)}
                 onKeyDown={(e: ReactKeyboardEvent) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -306,12 +359,20 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
         </g>
         {points.length > 0 && (
           <g className="plan-measure" pointerEvents="none">
-            {points.length === 2 && <line x1={points[0][0]} y1={points[0][1]} x2={points[1][0]} y2={points[1][1]} strokeWidth={ui * 0.3} />}
+            {tool === 'area' ? (
+              closed ? (
+                <polygon className="plan-area" points={points.map((q) => q.join(',')).join(' ')} strokeWidth={ui * 0.3} />
+              ) : (
+                points.length > 1 && <polyline className="plan-area-open" points={points.map((q) => q.join(',')).join(' ')} strokeWidth={ui * 0.3} />
+              )
+            ) : (
+              points.length === 2 && <line x1={points[0][0]} y1={points[0][1]} x2={points[1][0]} y2={points[1][1]} strokeWidth={ui * 0.3} />
+            )}
             {points.map((p, i) => (
               <circle key={i} cx={p[0]} cy={p[1]} r={ui * 0.7} />
             ))}
-            {readout && (
-              <text x={(points[0][0] + points[1][0]) / 2} y={(points[0][1] + points[1][1]) / 2 - ui * 1.2} fontSize={ui * 2.2} textAnchor="middle">
+            {readout && centre && (
+              <text x={centre[0]} y={centre[1] - (tool === 'area' ? 0 : ui * 1.2)} fontSize={ui * 2.2} textAnchor="middle">
                 {readout}
               </text>
             )}
@@ -323,11 +384,22 @@ export function PlanViewer({ set, sheetId, onSheetChange, pick = false, selected
         {measuring ? (
           <span>
             <strong>Measure:</strong>{' '}
-            {readout ?? (points.length === 1 ? 'click the second point' : 'click two points (the ruler snaps to corners)')}
+            {readout ??
+              (tool === 'area'
+                ? points.length === 0
+                  ? 'click each corner of the shape in turn, then click the first corner again to close it'
+                  : `${points.length} corner${points.length === 1 ? '' : 's'} placed; click the first corner again to close the shape`
+                : points.length === 1
+                  ? 'click the second point'
+                  : 'click two points (the ruler snaps to corners)')}
           </span>
         ) : pick && !reveal ? (
           <span>
-            {selectedEl ? 'One element selected. Click another to change it.' : 'Click the drawing to answer.'}
+            {pickCount > 1
+              ? `${selected.length} of ${pickCount} selected. Click a selected element again to unselect it.`
+              : selectedEl
+                ? 'One element selected. Click another to change it.'
+                : 'Click the drawing to answer.'}
             {selectedEl?.link && (
               <button type="button" className="btn small ghost" style={{ marginLeft: 8 }} onClick={() => onSheetChange(selectedEl.link!)}>
                 Open sheet {selectedEl.link}

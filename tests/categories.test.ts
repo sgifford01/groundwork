@@ -193,7 +193,7 @@ describe('seed answers, recomputed independently', () => {
     const item = itemById('plan-reading-program-measure-efficiency') as PlanQItem;
     for (let seed = 1; seed <= 12; seed++) {
       const set = planFor(item, seed);
-      const floor = set.sheets.find((s) => s.id === 'A-201')!;
+      const floor = set.sheets.find((s) => s.id === 'A-102')!;
       const unitArea = floor.elements.filter((e) => e.role === 'unit').reduce((n, e) => n + (e.area ?? 0), 0);
       const efficiency = unitArea / (set.facts.building_length * set.facts.building_depth);
       expect(gradeMeasure(item, set, String(efficiency)).correct).toBe(true);

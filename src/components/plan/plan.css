@@ -114,6 +114,19 @@
   stroke-dasharray: 3 0.6 0.5 0.6;
 }
 
+/* property line: one long dash, two short ones */
+.plan-ink .pen-phantom {
+  stroke-dasharray: 9 1.6 1.6 1.6 1.6 1.6;
+}
+
+.plan-ink .fill-hatch {
+  fill: url(#plan-hatch);
+}
+
+.plan-hatch-line {
+  stroke: var(--plan-ink);
+}
+
 .plan-ink .fill-none {
   fill: none;
 }
@@ -184,6 +197,16 @@
 }
 
 .plan-measure line {
+  stroke: #d6336c;
+}
+
+.plan-measure .plan-area {
+  fill: rgba(214, 51, 108, 0.16);
+  stroke: #d6336c;
+}
+
+.plan-measure .plan-area-open {
+  fill: none;
   stroke: #d6336c;
 }
 

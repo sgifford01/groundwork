@@ -68,7 +68,8 @@ src/
                index.ts (ALL_ITEMS = core; CATEGORY_ITEMS; EVERY_ITEM; itemsOfCategory)
                categories/registry.ts (THE category list), categories/index.ts (collects items*.ts automatically),
                categories/specs.ts (spec rendering), categories/<slug>/{BUILD_SPEC.md, spec-data.ts, items*.ts}
-  plans/       generated drawings: model.ts, draw.ts (symbols), mfDoubleLoaded.ts (first plan set), sets.ts
+  plans/       generated drawings: model.ts, draw.ts (symbols), mfDoubleLoaded.ts (first plan set: cover, site plan,
+               floor plan, section, enlarged unit), sets.ts
   leases/      engine.ts: the lease engine (rent roll + market leasing assumptions -> lease-by-lease cash flow)
   learn/       sm2.ts (spaced repetition), mastery.ts, session.ts (session builder), placement.ts, stats.ts,
                category.ts (per-category progress, due everywhere, status rows), start.ts (starts sessions; `category` option)
@@ -201,7 +202,7 @@ To add a function: add an entry with `name`, `category`, `summary`, `detail`, `a
 |---|---|---|
 | `judgment` | `options[{ text, rating, why, category? }]` (3 to 5), `explanation`, optional `vars` | Exactly one `best` (1.0); `acceptable` scores 0.5; `poor` 0. Every `why` is shown after grading. |
 | `docreview` | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]`, `vars` | Score = (issues found - wrong flags) / issues. At least as many clean flaggable lines as issues. Text takes `{templates}`. |
-| `plan` | `plan { set, variants, sheet }`, `task` (`locate` / `measure` / `identify`), `explanation` | Answers are formulas over the plan's `facts`. Every variant must be inside the plan set's limits. Text takes `{fact_name|format}`. |
+| `plan` | `plan { set, variants, sheet }`, `task` (`locate` / `measure` / `identify` / `navigate`), `explanation` | Answers are formulas over the plan's `facts`. Every variant must be inside the plan set's limits. Text takes `{fact_name|format}`. `locate` takes `pick` (several clicks) and `onSheet`; `measure` has an `area` tool. Element ids repeat between sheets, so clicks are keyed `"<sheet>/<id>"`. |
 | `leasesim` | `scenario`, `variants`, `editable`, `task` (`read` / `configure` / `shock`), `explanation` | The lease-by-lease simulator. Answers are formulas over the report's facts (`noi_year_three`). Inputs are addressed by path (`mla.tiNew`, `tenants.suite-200.baseRent`). Graded in `grading/leases.ts`; the engine is `src/leases/engine.ts`. |
 
 Grading for these is in `grading/category.ts`; they are in `ALL_TYPE_LABELS` (use that map for display) and never in `ITEM_TYPE_LABELS`.
@@ -250,6 +251,8 @@ Multi-sheet tasks work (sheet tabs, green cross-sheet links, `sheet:` on a mista
 **Category system (built 2026-11-14):** registry; home screen tiles that open a description overlay when clicked; landing pages; per-category review and mastery; mixed review; the `judgment`, `docreview` and `plan` types; a minimal plan viewer with one plan set (`mf-double-loaded`: cover, floor plan, enlarged unit plan); a BUILD_SPEC and two seed questions for each of the eight new categories (16 seeds); builder docs; `category-status` and `sync-specs`.
 
 **ARGUS chunk 4 (built 2026-11-14, first by design):** the lease engine, the lease simulator, the `leasesim` type and 9 questions. The build order is at the end of `docs/BUILDING_CATEGORIES.md`.
+
+**Plan Reading chunk 1 (built 2026-11-15):** `navigate` tasks, multi-select and cross-sheet `locate`, an area ruler, revision and section marks, a site plan (C-101) and a building section (A-301), and 19 questions (plan set organisation and symbols). Sheets were renumbered to the discipline + sheet-type convention (the floor plan is A-102).
 
 **Not built yet:** most of the content of the eight categories. Run `npm run category-status` for the current counts, and keep each category's `status` in the registry up to date (`planned` → `in-progress` → `built`).
 

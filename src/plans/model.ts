@@ -20,11 +20,14 @@ export type Shape =
   | { t: 'circle'; cx: number; cy: number; r: number }
   /** A circular arc from angle `from` to `to`, in degrees clockwise from east (screen coordinates). */
   | { t: 'arc'; cx: number; cy: number; r: number; from: number; to: number }
+  /** A revision cloud: a scalloped outline around a rectangle. `r` is the radius of each scallop. */
+  | { t: 'cloud'; x: number; y: number; w: number; h: number; r: number }
   | { t: 'text'; x: number; y: number; text: string; size: number; anchor?: 'start' | 'middle' | 'end'; bold?: boolean; rot?: number };
 
 /** Line weights, as on a drawn plan: heavy for cut walls, light for everything else. */
-export type Pen = 'wall' | 'medium' | 'thin' | 'dash' | 'center' | 'none';
-export type Fill = 'none' | 'paper' | 'solid' | 'tint';
+/** `phantom` is the long-dash, two-short-dash line used for property lines. */
+export type Pen = 'wall' | 'medium' | 'thin' | 'dash' | 'center' | 'phantom' | 'none';
+export type Fill = 'none' | 'paper' | 'solid' | 'tint' | 'hatch';
 
 export interface Mark {
   shape: Shape;
@@ -49,10 +52,10 @@ export interface PlanElement {
 }
 
 export interface PlanSheet {
-  /** The sheet number, e.g. "A-201". */
+  /** The sheet number, e.g. "A-102". */
   id: string;
   title: string;
-  /** Discipline prefix: G, C, L, A, S, M, E, P, FP. */
+  /** Discipline designator, e.g. G, C, L, S, A, F, P, M, E. */
   discipline: string;
   scale: {
     /** As written on the drawing, e.g. 1/8" = 1'-0". */
@@ -111,14 +114,14 @@ export function polygonArea(pts: Pt[]): number {
 }
 
 export function shapeArea(s: Shape): number {
-  if (s.t === 'rect') return s.w * s.h;
+  if (s.t === 'rect' || s.t === 'cloud') return s.w * s.h;
   if (s.t === 'poly') return polygonArea(s.pts);
   if (s.t === 'circle') return Math.PI * s.r * s.r;
   return 0;
 }
 
 export function shapeContains(s: Shape, p: Pt): boolean {
-  if (s.t === 'rect') return p[0] >= s.x && p[0] <= s.x + s.w && p[1] >= s.y && p[1] <= s.y + s.h;
+  if (s.t === 'rect' || s.t === 'cloud') return p[0] >= s.x && p[0] <= s.x + s.w && p[1] >= s.y && p[1] <= s.y + s.h;
   if (s.t === 'circle') return distance([s.cx, s.cy], p) <= s.r;
   if (s.t === 'poly') {
     let inside = false;
@@ -133,7 +136,7 @@ export function shapeContains(s: Shape, p: Pt): boolean {
 }
 
 export function shapeCentre(s: Shape): Pt {
-  if (s.t === 'rect') return [s.x + s.w / 2, s.y + s.h / 2];
+  if (s.t === 'rect' || s.t === 'cloud') return [s.x + s.w / 2, s.y + s.h / 2];
   if (s.t === 'circle' || s.t === 'arc') return [s.cx, s.cy];
   if (s.t === 'line') return [(s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2];
   if (s.t === 'text') return [s.x, s.y];

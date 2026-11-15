@@ -36,11 +36,16 @@ import { buggyAttempt, caseSheets, goNoGoTruth, gradeErrorHunt, gradeEstimate, g
 import {
   gradeDocReview,
   gradeLocate,
+  gradeLocateMany,
   gradeMeasure,
   identifyOptions,
   JUDGMENT_SCORE,
   judgmentOptions,
+  locateTargets,
   matchingElements,
+  matchingPlaced,
+  navigateOptions,
+  placedElements,
   renderDocument,
 } from '../src/grading/category';
 import { baseKeyValues, checkAnswerKey, collectTargets, gradeGrid, solutionAttempt, type GridAttempt } from '../src/grading/gridGrader';
@@ -319,25 +324,55 @@ describe('category content: plan reading', () => {
 
       if (item.task.kind === 'locate') {
         const task = item.task;
-        it('has a clickable target on the starting sheet, and wrong clicks are graded wrong', () => {
+        it('has clickable targets where it says they are, and wrong clicks are graded wrong', () => {
           for (const set of sets) {
-            const targets = matchingElements(set, task.targets);
-            expect(targets.length, 'no clickable element matches the targets').toBeGreaterThan(0);
-            const start = set.sheets.find((s) => s.id === item.plan.sheet)!;
-            expect(targets.some((t) => start.elements.includes(t)), 'a target must be on the starting sheet').toBe(true);
-            for (const t of targets) expect(gradeLocate(item, set, t.id).correct).toBe(true);
-            expect(gradeLocate(item, set, null).correct).toBe(false);
-            const targetIds = new Set(targets.map((t) => t.id));
-            const others = start.elements.filter((e) => e.hit && !targetIds.has(e.id));
-            expect(others.length, 'needs clickable wrong answers').toBeGreaterThan(3);
-            for (const e of others) expect(gradeLocate(item, set, e.id).correct, e.id).toBe(false);
-            for (const d of task.decoys) {
-              const hit = matchingElements(set, [d.match]);
-              expect(hit.length, `decoy "${d.match}" matches nothing clickable`).toBeGreaterThan(0);
-              const res = gradeLocate(item, set, hit[0].id);
-              expect(res.correct).toBe(false);
-              expect(res.message).toBe(d.why);
+            const targets = locateTargets(item, set);
+            expect(targets.length, 'no clickable element matches the targets').toBeGreaterThanOrEqual(task.pick);
+            const home = targets[0].sheet;
+            if (task.onSheet) {
+              expect(home).toBe(task.onSheet);
+              expect(task.onSheet, 'onSheet is for tasks that start on a different sheet').not.toBe(item.plan.sheet);
+            } else {
+              expect(targets.some((t) => t.sheet === item.plan.sheet), 'a target must be on the starting sheet').toBe(true);
             }
+            for (const t of targets) expect(gradeLocate(item, set, t.key).correct).toBe(true);
+            expect(gradeLocate(item, set, null).correct).toBe(false);
+            const targetKeys = new Set(targets.map((t) => t.key));
+            const others = placedElements(set).filter((p) => (p.sheet === item.plan.sheet || p.sheet === home) && !targetKeys.has(p.key));
+            expect(others.length, 'needs clickable wrong answers').toBeGreaterThan(3);
+            for (const o of others) expect(gradeLocate(item, set, o.key).correct, o.key).toBe(false);
+            for (const d of task.decoys) {
+              const hit = matchingPlaced(set, [d.match]).filter((p) => !targetKeys.has(p.key));
+              expect(hit.length, `decoy "${d.match}" matches nothing clickable`).toBeGreaterThan(0);
+              const res = gradeLocate(item, set, hit[0].key);
+              expect(res.correct).toBe(false);
+              // an earlier decoy may claim the same element; what matters is that it gets specific feedback
+              expect(task.decoys.map((x) => x.why)).toContain(res.message);
+            }
+            // scoring: all the picks needed, and nothing else, is full marks; a wrong pick cancels a right one
+            const need = targets.slice(0, task.pick).map((t) => t.key);
+            expect(gradeLocateMany(item, set, need).score).toBe(1);
+            expect(gradeLocateMany(item, set, []).score).toBe(0);
+            expect(gradeLocateMany(item, set, [others[0].key]).score).toBe(0);
+            if (task.pick > 1) {
+              expect(gradeLocateMany(item, set, need.slice(0, 1)).score).toBeCloseTo(1 / task.pick);
+              expect(gradeLocateMany(item, set, [...need.slice(0, task.pick - 1), others[0].key]).score).toBeCloseTo((task.pick - 2) / task.pick);
+            }
+          }
+        });
+      }
+
+      if (item.task.kind === 'navigate') {
+        const task = item.task;
+        it('offers every sheet of the set once, with exactly one right answer', () => {
+          for (const set of sets) {
+            const options = navigateOptions(item, set, seededRng(item.id, 1));
+            expect(options.filter((o) => o.correct).map((o) => o.sheet)).toEqual([task.correctSheet]);
+            expect(new Set(options.map((o) => o.sheet)).size).toBe(options.length);
+            for (const sheet of set.sheets) expect(options.some((o) => o.sheet === sheet.id), sheet.id).toBe(true);
+            for (const d of task.distractorSheets) expect(set.sheets.some((sh) => sh.id === d), `${d} is a real sheet, not a distractor`).toBe(false);
+            expect(options.length).toBeGreaterThanOrEqual(4);
+            if (task.highlight) expect(matchingElements(set, [task.highlight]).length).toBeGreaterThan(0);
           }
         });
       }

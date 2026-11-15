@@ -130,11 +130,11 @@ export function ItemRunner({
 
       {item.verifiedAsOf && item.sourceUrl && (
         <div className="q-source">
-          Rule checked on {item.verifiedAsOf} against{' '}
+          Checked on {item.verifiedAsOf} against{' '}
           <a href={item.sourceUrl} target="_blank" rel="noreferrer">
-            this official source
+            this source
           </a>
-          . Laws and fees change, so confirm before relying on it.
+          . Rules and conventions change, so confirm before relying on it.
         </div>
       )}
 
