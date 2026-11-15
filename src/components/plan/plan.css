@@ -150,10 +150,29 @@
   letter-spacing: 0.02em;
 }
 
-.plan-hit {
+/* Hotspots. Strokes are in screen pixels (non-scaling), so the line patterns
+   look the same at any zoom. Each state differs in pattern as well as colour:
+   highlighted = dotted, selected = dashed, right = solid and heavy with a tick,
+   wrong = dashed and heavy with a cross. */
+.plan-hit,
+.plan-key {
   fill: transparent;
   stroke: transparent;
   outline: none;
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2px;
+}
+
+/* the keyboard layer sits under the pointer layer and never takes the mouse */
+.plan-key {
+  pointer-events: none;
+}
+
+.plan-key:focus-visible {
+  outline: none;
+  stroke: var(--plan-pick);
+  stroke-width: 3px;
+  fill: rgba(31, 111, 214, 0.16);
 }
 
 .plan-svg.picking .plan-hit,
@@ -166,34 +185,148 @@
 }
 
 .plan-svg.picking .plan-hit:hover,
-.plan-hit.link:hover {
+.plan-hit.link:hover,
+.plan-hit.focus {
   fill: rgba(31, 111, 214, 0.1);
   stroke: var(--plan-pick);
 }
 
-.plan-hit:focus-visible {
-  stroke: var(--plan-pick);
-  fill: rgba(31, 111, 214, 0.14);
+.plan-hit.focus {
+  stroke-width: 3px;
 }
 
 .plan-hit.hl {
   stroke: #c98500;
   fill: rgba(201, 133, 0, 0.18);
+  stroke-dasharray: 2 3;
+  stroke-width: 2.5px;
 }
 
 .plan-hit.sel {
   stroke: var(--plan-pick);
   fill: rgba(31, 111, 214, 0.22);
+  stroke-dasharray: 7 4;
+  stroke-width: 2.5px;
 }
 
 .plan-hit.good {
   stroke: var(--plan-good);
   fill: rgba(30, 125, 76, 0.22);
+  stroke-dasharray: none;
+  stroke-width: 3px;
 }
 
 .plan-hit.bad {
   stroke: var(--plan-bad);
   fill: rgba(185, 50, 39, 0.22);
+  stroke-dasharray: 7 4;
+  stroke-width: 3px;
+}
+
+.plan-verdicts circle {
+  fill: #fff;
+}
+
+.plan-verdicts .good circle {
+  stroke: var(--plan-good);
+}
+
+.plan-verdicts .bad circle {
+  stroke: var(--plan-bad);
+}
+
+.plan-verdicts text {
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+
+.plan-verdicts .good text {
+  fill: var(--plan-good);
+}
+
+.plan-verdicts .bad text {
+  fill: var(--plan-bad);
+}
+
+/* the keyboard ruler and the element list, under the drawing */
+.plan-measure .plan-snap-ring {
+  fill: none;
+  stroke: #d6336c;
+}
+
+.plan-list {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.plan-list p {
+  margin: 0 0 6px;
+}
+
+.plan-list ol {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 4px;
+}
+
+.plan-list-item {
+  font: inherit;
+  font-size: 12.5px;
+  width: 100%;
+  text-align: left;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.plan-list-item:disabled {
+  cursor: default;
+}
+
+.plan-list-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.plan-list-item.sel {
+  border-color: var(--plan-pick);
+  border-style: dashed;
+}
+
+.plan-list-item.good {
+  border-color: var(--plan-good);
+}
+
+.plan-list-item.bad {
+  border-color: var(--plan-bad);
+  border-style: dashed;
+}
+
+.plan-list-mark {
+  display: inline-block;
+  width: 1em;
+  flex: none;
+  font-weight: 700;
+}
+
+.plan-list-item.good .plan-list-mark {
+  color: var(--plan-good);
+}
+
+.plan-list-item.bad .plan-list-mark {
+  color: var(--plan-bad);
 }
 
 .plan-measure line {

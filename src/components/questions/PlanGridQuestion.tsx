@@ -3,19 +3,45 @@
  * with numbers read off the drawing (takeoffs); the rest are formulas built on
  * them. Grading is in src/grading/plangrid.ts and reuses the grid grader
  * unchanged.
+ *
+ * With `minutes`, `passMark` and `brief` it is a timed challenge (the plan
+ * reading capstone): nothing is shown until the clock starts, there are no
+ * hints, and the sheet is graded when time runs out, as for the `timed` type.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { PlanGridItem } from '../../content/schema';
 import { formatValue } from '../../engine/format';
 import { newSeed } from '../../engine/rng';
 import { renderTemplate } from '../../engine/variables';
 import { collectTargets, type GridAttempt, type TargetStatus } from '../../grading/gridGrader';
-import { displaySheets, figureFor, gradePlanGrid, type PlanGridResult, type TakeoffResult } from '../../grading/plangrid';
+import { displaySheets, figureFor, gradePlanGrid, isTimedPlanGrid, type PlanGridResult, type TakeoffResult } from '../../grading/plangrid';
 import { Grid } from '../grid/Grid';
 import { PlanViewer } from '../plan/PlanViewer';
 import { ConfidenceBar, Feedback, HintLadder, type QuestionProps } from './common';
 import { clearStaleMarks } from './GridQuestion';
-import { GridLegend, GridShortcutHelp, ResultsTable, STATUS_LABEL } from './gridShared';
+import { clock, GridLegend, GridShortcutHelp, ResultsTable, STATUS_LABEL, useCountdown } from './gridShared';
+
+function Brief({ items, open }: { items: string[]; open?: boolean }) {
+  return open ? (
+    <div className="hints">
+      <strong>What the sheet must do</strong>
+      <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+        {items.map((b, i) => (
+          <li key={i}>{b}</li>
+        ))}
+      </ul>
+    </div>
+  ) : (
+    <details className="grid-help" open>
+      <summary>What the sheet must do</summary>
+      <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+        {items.map((b, i) => (
+          <li key={i}>{b}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
 
 function TakeoffTable({ rows }: { rows: TakeoffResult[] }) {
   return (
@@ -56,6 +82,7 @@ function TakeoffTable({ rows }: { rows: TakeoffResult[] }) {
 }
 
 export function PlanGridQuestion({ item, seed, graded, onGraded }: QuestionProps<PlanGridItem>) {
+  const timed = isTimedPlanGrid(item);
   const set = useMemo(() => figureFor(item, seed), [item, seed]);
   const sheets = useMemo(() => displaySheets(item, set), [item, set]);
   const cellCount = useMemo(() => collectTargets(sheets).length, [sheets]);
@@ -66,6 +93,9 @@ export function PlanGridQuestion({ item, seed, graded, onGraded }: QuestionProps
   const [showModel, setShowModel] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [hints, setHints] = useState(0);
+  const [started, setStarted] = useState(!timed);
+  const [usedSeconds, setUsedSeconds] = useState<number | null>(null);
+  const startedAt = useRef(0);
   const text = (s: string) => renderTemplate(s, set.facts, []);
 
   const filled = useMemo(
@@ -93,6 +123,7 @@ export function PlanGridQuestion({ item, seed, graded, onGraded }: QuestionProps
       );
       if (gaveUp) setShowModel(true);
       if (graded) return; // later checks are for learning; only the first one is recorded
+      if (timed) setUsedSeconds(Math.round((Date.now() - startedAt.current) / 1000));
       const total = res.grid.targets.length + res.takeoffs.length;
       const right = res.grid.targets.filter((t) => t.credit === 1).length + res.takeoffs.filter((t) => t.correct).length;
       const firstWrongTakeoff = res.takeoffs.find((t) => !t.correct);
@@ -114,18 +145,55 @@ export function PlanGridQuestion({ item, seed, graded, onGraded }: QuestionProps
               : undefined,
       });
     },
-    [item, set, attempt, graded, hints, onGraded],
+    [item, set, attempt, graded, hints, onGraded, timed],
   );
+
+  const secondsLeft = useCountdown(timed ? Math.round(item.minutes! * 60) : 0, timed && started && !graded, () => check(null));
 
   const takeoffRows = result ? (showAll || showModel ? result.takeoffs : result.takeoffs.filter((t) => !t.correct)) : [];
   const wrongCells = result?.grid.targets.filter((t) => t.status !== 'correct') ?? [];
   const cellRows = result ? (showAll || showModel ? result.grid.targets : wrongCells) : [];
   const right = result ? result.grid.targets.filter((t) => t.credit === 1).length + result.takeoffs.filter((t) => t.correct).length : 0;
   const total = result ? result.grid.targets.length + result.takeoffs.length : 0;
+  const passMark = item.passMark ?? 1;
+  const timedPass = timed && result ? result.score >= passMark : false;
+
+  if (timed && !started) {
+    return (
+      <>
+        <div className="q-prompt compact">{text(item.prompt)}</div>
+        <Brief items={item.brief!} open />
+        <p className="muted">
+          {item.minutes} minutes, {cellCount} cells, no hints. Pass mark {Math.round(passMark * 100)}%. The drawings and the sheet appear when you start the
+          clock, and the sheet is graded automatically when time runs out.
+        </p>
+        <div className="row">
+          <button
+            type="button"
+            className="btn primary big"
+            onClick={() => {
+              startedAt.current = Date.now();
+              setStarted(true);
+            }}
+          >
+            Start the clock
+          </button>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <div className="q-prompt compact">{text(item.prompt)}</div>
+      {timed && (
+        <div className="spread">
+          <Brief items={item.brief!} />
+          <span className={`timer${!graded && secondsLeft <= 60 ? ' low' : ''}`} role="timer" aria-live="off">
+            {graded ? `Time used ${clock(usedSeconds ?? 0)}` : clock(secondsLeft)}
+          </span>
+        </div>
+      )}
       <PlanViewer set={set} sheetId={sheetId} onSheetChange={setSheetId} tool="real" />
 
       <GridLegend />
@@ -134,13 +202,26 @@ export function PlanGridQuestion({ item, seed, graded, onGraded }: QuestionProps
 
       {!graded && (
         <>
-          <ConfidenceBar onPick={(c) => check(c)} disabled={filled === 0} label={`Check my work (${filled} of ${cellCount} cells filled). How sure are you?`} />
-          <HintLadder hints={item.hints} used={hints} onUse={() => setHints((h) => h + 1)} onShowSolution={() => check(null, true)} />
+          <ConfidenceBar
+            onPick={(c) => check(c)}
+            disabled={filled === 0}
+            label={`${timed ? 'Hand in' : 'Check my work'} (${filled} of ${cellCount} cells filled). How sure are you?`}
+          />
+          {!timed && <HintLadder hints={item.hints} used={hints} onUse={() => setHints((h) => h + 1)} onShowSolution={() => check(null, true)} />}
         </>
       )}
 
       {result && (
-        <Feedback kind={result.passed ? 'ok' : right > 0 ? 'part' : 'bad'} title={result.passed ? `All ${total} cells correct` : `${right} of ${total} cells correct`}>
+        <Feedback
+          kind={timed ? (timedPass ? 'ok' : 'bad') : result.passed ? 'ok' : right > 0 ? 'part' : 'bad'}
+          title={
+            timed
+              ? `${timedPass ? 'Pass' : 'Not yet'}: ${Math.round(result.score * 100)}% (${right} of ${total} cells), pass mark ${Math.round(passMark * 100)}%`
+              : result.passed
+                ? `All ${total} cells correct`
+                : `${right} of ${total} cells correct`
+          }
+        >
           <p className="small">
             Numbers taken off the drawing are checked against the drawing. Formula cells are checked three ways (value, real formula, stress test) as if
             every number from the drawing were right, so a miscount costs only its own cell.

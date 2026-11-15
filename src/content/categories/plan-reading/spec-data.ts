@@ -213,11 +213,10 @@ export const SPEC: SpecData = {
     order: 2,
     explain: 1,
     grid: 2,
-    plangrid: 4,
+    plangrid: 5,
     errorhunt: 2,
     docreview: 2,
     judgment: 2,
-    timed: 1,
   },
   chunks: [
     { title: 'Chunk 0: seeds (done)', items: 2, scope: 'plan-reading-symbols-locate-stair, plan-reading-program-measure-efficiency, and the minimal viewer with plan set mf-double-loaded' },
@@ -231,9 +230,10 @@ export const SPEC: SpecData = {
         'The plan-to-spreadsheet type plangrid (section 13.4), drawings on document reviews, a stairs parameter for spot-the-problem, an area schedule on the office floor; plan-reading-program (10 more) and plan-reading-bridge (8)',
     },
     {
-      title: 'Chunk 5',
+      title: 'Chunk 5 (done 2026-11-15)',
       items: 1,
-      scope: 'Ground floor and typical apartment floor for the podium set; a timer on plangrid; capstone plan-reading-case; accessibility pass (13.6); set status to built',
+      scope:
+        'Ground floor (A-101) and typical floor (A-102) for the podium set, with cores that line up floor to floor; a timer on plangrid; the capstone plan-reading-case-plangrid-kettner-commons; the accessibility pass (13.6); status built',
     },
   ],
 };

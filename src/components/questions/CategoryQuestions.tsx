@@ -422,8 +422,8 @@ export function PlanQuestion({ item, seed, graded, onGraded }: QuestionProps<Pla
               ? 'Correct'
               : task.kind === 'locate'
                 ? need > 1
-                  ? `${located?.right.length ?? 0} of ${need} found${located?.wrong.length ? `, ${located.wrong.length} wrong` : ''}. The answers are outlined in green`
-                  : `Not quite. The right answer is outlined in green: ${targets[0]?.el.name ?? ''}${targets[0] && targets[0].sheet !== item.plan.sheet ? ` (sheet ${targets[0].sheet})` : ''}`
+                  ? `${located?.right.length ?? 0} of ${need} found${located?.wrong.length ? `, ${located.wrong.length} wrong` : ''}. The answers are marked with a tick (and outlined in green)`
+                  : `Not quite. The right answer is marked with a tick (and outlined in green): ${targets[0]?.el.name ?? ''}${targets[0] && targets[0].sheet !== item.plan.sheet ? ` (sheet ${targets[0].sheet})` : ''}`
                 : task.kind === 'measure'
                   ? `The answer is ${numeric?.expectedText ?? ''}`
                   : `The answer is ${correctText}`

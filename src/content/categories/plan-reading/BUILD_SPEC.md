@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Tier | Large (tier id `BIG`): 70 questions, two difficulty levels (1 Foundations, 2 Applied), one capstone case (level 3) |
-| Status | `in-progress`: 2 seeds and Chunks 1 to 4 built (2026-11-15): viewer extensions, four plan sets, the plan-to-spreadsheet type, 67 questions. 69 of 70; only the capstone (Chunk 5) is left |
+| Status | `built` (2026-11-15): 2 seeds and Chunks 1 to 5: viewer extensions and the accessibility pass, four plan sets, the plan-to-spreadsheet type with a timed capstone, 70 of 70 questions |
 | Build with | **Fable 5.2, high effort** (it extends a drawing generator and an interactive component) |
 | Legal verification | Not required (zoning numbers are always GIVEN, never taught or asserted) |
 | Read first | `CLAUDE.md`, `docs/BUILDING_CATEGORIES.md`, this file, `items.ts` in this folder, then `src/plans/*` and `src/components/plan/PlanViewer.tsx` |
@@ -305,11 +305,10 @@ The quantities taken off a plan (units by type, net area) are the first inputs o
 | Put in order | `order` | 2 |
 | Explain why | `explain` | 1 |
 | Grid build | `grid` | 2 |
-| Plan to spreadsheet | `plangrid` | 4 |
+| Plan to spreadsheet | `plangrid` | 5 |
 | Error hunt | `errorhunt` | 2 |
 | Document review | `docreview` | 2 |
 | Scenario judgment | `judgment` | 2 |
-| Timed challenge | `timed` | 1 |
 | **Total** | | **70** |
 <!-- TYPEMIX:END -->
 
@@ -346,9 +345,9 @@ Of the 34 `plan` questions, aim for about 14 locate (including spot-the-problem)
 
 ## 9. Case study brief and rubric
 
-**`plan-reading-case-...` (level 3, about 35 minutes, pass mark 80%): a `plangrid` with a timer (section 13.3, "Still to build"), so the plan set sits above the sheet.**
+**`plan-reading-case-plangrid-kettner-commons` (built in Chunk 5; level 3, 35 minutes, pass mark 80%): a `plangrid` with a timer (section 13.4), so the plan set sits above the sheet.**
 
-*Brief.* An illustrative five-storey mixed-use building: ground-floor retail and lobby over a parking level, four apartment floors above. The student is given the plan set (cover, site plan, parking plan, ground floor, typical floor, enlarged unit, section) and a short list of given limits (FAR, required parking ratio, target unit mix). Deliverables in the grid:
+*Brief.* An illustrative mixed-use building: ground-floor retail and lobby over a parking level, three to five apartment floors above (one of three variants per attempt). The student is given the plan set (cover, parking plan, ground floor, typical floor, section; the site plan and enlarged unit plan were left out, so the unit areas are given) and a short list of given limits (FAR and what it counts, parking ratios per apartment and per 1,000 SF of retail, the required two-bed share). Deliverables in the grid:
 
 1. Takeoff: units by type per floor and in total; retail area; stalls.
 2. Program: GSF by floor and total, residential NRA, efficiency, average unit size, FAR used.
@@ -356,6 +355,8 @@ Of the 34 `plan` questions, aim for about 14 locate (including spot-the-problem)
 4. Mini pro forma: residential and retail revenue, NOI and value from given rents and rates.
 
 *Rubric (auto-graded).* Takeoff cells 30% (value-checked against plan facts), program formulas 35%, checks 15%, pro forma 20%. A `plangrid` counts every cell equally, so meet these weights by the number of cells in each part rather than by new scoring code. `mistakes` must cover: corridor counted as rentable, ground floor multiplied as a typical floor, unweighted average size, stalls rounded down, retail rent applied per month instead of per year.
+
+*As built.* 24 cells: 7 takeoffs (29%), 8 program cells (33%), 4 checks (17%: the stalls required, then PASS/FAIL for parking, unit mix and FAR), 5 value cells (21%). 15 sheet mistakes in all: the five the rubric requires (the ground floor one twice, for the apartments and for the gross area), plus efficiency on the wrong base, the FAR on the apartments only, retail parking left out, the retail ratio not per 1,000 SF, the parking and FAR checks reversed, apartment rent not annualised, EGI before vacancy and value on EGI. Every takeoff has mistakes of its own. The three variants differ in their results: the first passes every check, the second fails parking and FAR, the third fails the unit mix. Edge cases flip every check both ways, so a check built on a typed stall count fails the stress test (and PASS typed as text is caught as hardcoding).
 
 ## 10. Illustrative assumption ranges
 
@@ -405,10 +406,10 @@ Label all of these illustrative. They are drawing parameters, not standards.
 - `src/plans/mfDoubleLoaded.ts`: plan set `mf-double-loaded` with eight sheets, numbered by the discipline-letter and sheet-type convention: **G-001** cover and index, **C-101** site plan (1" = 20': property lines, setback lines, easement, footprint, street), **A-102** level 2 floor plan (1/8": with a section cut and its two markers, an elevation marker, a revision cloud, delta and revision list), **A-103** roof plan (parapet, roof drains with slope arrows, rooftop units, hatch, elevator overrun), **A-201** south elevation (windows per apartment per floor, entrance, level markers, parapet), **A-301** building section (floor slabs, level markers with elevations, floor-to-floor dimensions), **A-401** enlarged unit plan (1/4"), **A-402** enlarged unit reflected ceiling plan (light fixtures, exhaust fan, smoke detectors, ceiling height tags, hatched lowered ceilings). Eleven parameters with limits. `stairs: 1` (default 2) draws the floor with one stair: the east stair becomes a storage room (role `storage`) and the east end of the corridor becomes a dead end (role `egress-problem`), for spot-the-problem questions. The list of element roles is in the comment at the top of the file, and every fact is listed in `build()`.
 - `src/plans/retailStrip.ts`: plan set `retail-strip`: G-001 and **A-101** ground floor of a row of shops (a two-bay corner suite and inline suites, storefronts with paired entry doors, rear doors onto a service corridor, an unlabelled loading bay open to the alley, trash and electrical rooms, columns, frontage dimensions). Facts: leasable and gross area, frontage, corner and inline shop areas, depth-to-frontage.
 - `src/plans/officeFloor.ts`: plan set `office-floor`: G-001 and **A-104** multi-tenant office floor (column grid, central core with two stairs, four elevators, lobby, restrooms and shaft, a 5-ft ring corridor, four suites, lease-depth dimensions, and an area schedule (role `schedule`) listing each suite's usable area, the total usable area and the floor openings). Facts: plate, core, usable, rentable (plate less stairs, elevators and shaft), load factor.
-- `src/plans/podium.ts`: plan set `podium-mixed-use`: G-001, **A-100** parking level (one or two 60-ft modules, ramp, cross aisle, accessible stalls with hatched access aisles at the elevator end, columns, cores) and **A-301** section (parking below grade, a tall retail floor, the podium slab, apartment floors set back where the garage is wider). Facts: stall counts, garage area, SF per stall, storeys and heights.
+- `src/plans/podium.ts`: plan set `podium-mixed-use`: G-001, **A-100** parking level (one or two 60-ft modules, ramp, cross aisle, accessible stalls with hatched access aisles at the elevator end, columns, cores), **A-101** ground floor (shops along the street as deep as the service corridor, ramp down, trash and loading, residential entry, elevator lobby, bikes, fitness and leasing, four stairs with their exits), **A-102** typical floor (a double-loaded bar of 24-ft one-beds and 36-ft two-beds, centred over the ground floor and flush with its east face, with an east core) and **A-301** section (parking below grade, a tall retail floor, the podium slab, apartment floors set back where the garage is wider). All four drawings share one coordinate frame, and the tests check that elevators, stairs and the shaft are in exactly the same place on every sheet they appear on. Facts: stall counts, garage area, SF per stall, storeys and heights; ground floor and retail areas, shop count and depth; apartments per floor by type, unit sizes, floor gross and rentable area, and totals over all apartment floors (`res_units`, `res_gsf`, `res_nra_sf`, `above_grade_sf`).
 - `coverSheet(index, subtitle, project)` in `mfDoubleLoaded.ts` is shared by every set.
 - `src/plans/sets.ts`: `PLAN_SETS`, `buildPlanSet(id, overrides)` with parameter limits.
-- `src/components/plan/PlanViewer.tsx`: SVG rendering; pan (drag, arrow keys), zoom (buttons, pinch, Ctrl+scroll, + and -), fit; sheet tabs; links jump between sheets; Measure tool with snapping in `real`, `paper` or `area` mode (area: click each corner, then the first corner again to close; readout in SF); pick mode for one or several elements; reveal state after grading.
+- `src/components/plan/PlanViewer.tsx`: SVG rendering; pan (drag, arrow keys), zoom (buttons, trackpad or two-finger pinch, Ctrl+scroll, + and -), fit; sheet tabs; links jump between sheets; Measure tool with snapping in `real`, `paper` or `area` mode (area: click each corner, then the first corner again to close; readout in SF), and a list of snap points for placing the ruler from the keyboard; pick mode for one or several elements; reveal state after grading, with a tick or cross on each element; keyboard and list access (13.6).
 - Item type `plan` in `schema.ts` with four task kinds:
   - `locate`: `targets`, `decoys`, `pick` (how many to click; default 1), `onSheet` (only elements on that sheet count; use it when finding the right sheet is part of the task).
   - `measure`: `answer` formula over the facts, `format`, `tolerance`, `tool` (`real` / `paper` / `area` / `none`), `mistakes`.
@@ -441,13 +442,9 @@ Built in Chunk 3: plan sets `retail-strip`, `office-floor` and `podium-mixed-use
 
 Built in Chunk 4: the `plangrid` type (13.4); drawings on document reviews (`figure`); the `stairs` parameter on the apartment set; the office area schedule.
 
-Still to build (Chunk 5):
+Built in Chunk 5: the ground floor (A-101) and typical floor (A-102) of the podium set; a timer on `plangrid` (13.4); the capstone (section 9); the accessibility pass (13.6).
 
-- **A timer on `plangrid`.** Add optional `minutes`, `passMark` and `brief` (all three or none) and reuse the countdown, brief and pass-mark behaviour of the core `timed` screen; no hints while timed. Grading does not change. The capstone is then a `plangrid`, so when it is built, move its count in `spec-data.ts` from `timed: 1` to `plangrid: 5` and run `npm run sync-specs`.
-- **More sheets for the podium set.** The capstone brief (section 9) needs a ground floor (retail and lobby) and a typical apartment floor above the parking level; reuse the apartment set's drawing helpers rather than copying them. A site plan and an enlarged unit are optional: drop them from the brief if they are not built. Every new fact gets its cross-check in `tests/plans.test.ts`.
-- **The accessibility pass (13.6).** Check each item and build what is missing; at least the "List elements" toggle and placing Measure points from the keyboard do not exist yet.
-
-Built against the plan: 35 `plan` (target 34) and 7 flashcards (target 8), both within the ±2 allowed. Only the capstone is left.
+Nothing is left to build. Built against the plan: 35 `plan` (target 34) and 7 flashcards (target 8), both within the ±2 allowed; every other type exactly as section 6. Ideas for later, not planned: a site plan and an enlarged unit plan for the podium set (the capstone would then take unit areas off the drawings too), and a podium variant whose stall count falls short of a requirement in a `locate` question.
 
 ### 13.4 Plan to spreadsheet: the `plangrid` type (built in Chunk 4)
 
@@ -468,6 +465,8 @@ Built against the plan: 35 `plan` (target 34) and 7 flashcards (target 8), both 
 
 **Screen** (`components/questions/PlanGridQuestion.tsx`): the plan viewer (with the Measure tool) above the grid; the prompt and explanation can use `{fact}` templates; feedback shows a "Numbers from the drawing" table and a "Formula cells" table. There is no .xlsx download for this type, because the drawing only exists in the app.
 
+**Timed (built in Chunk 5).** Give all three of `minutes`, `passMark` and `brief` (the loader rejects one or two of them, and hints on a timed question) to make a timed challenge, as for the core `timed` type: the brief and a "Start the clock" button first, with the drawings and the sheet hidden until the clock starts; no hints; "Hand in" instead of "Check my work"; graded automatically when time runs out; the result says Pass or Not yet against the pass mark, and shows the time used. Grading itself is unchanged. The capstone is the only timed `plangrid`.
+
 **Tests** (`tests/category-content.test.ts`, "plan to spreadsheet"), for every `plangrid`, most of them for every variant of its drawing: the item loads and its text renders; every takeoff feeds at least one formula cell; the answer key is clean under random inputs; the model answer scores 100% and a blank sheet 0; each takeoff mistake is caught by name and costs only its own cell; a typed count inside a formula fails the stress test; typed numbers in formula cells are caught as hardcoding; each grid mistake is caught and named.
 
 ### 13.5 Grading API (keep UI-free, in `src/grading/category.ts`)
@@ -476,12 +475,14 @@ Built against the plan: 35 `plan` (target 34) and 7 flashcards (target 8), both 
 
 ### 13.6 Accessibility
 
-- The SVG is focusable; arrow keys pan, + and - zoom, 0 fits (built).
-- Every hotspot is a focusable `role="button"`. Before grading its label is neutral ("Drawing element 12") so that screen-reader users are not handed the answer; after grading it is the element's real name (built). Tab order should follow reading order (left to right, top to bottom): sort hit elements by position when rendering.
-- Add a "List elements" toggle: a visually hidden-by-default list of the clickable elements on the sheet, each as a button labelled by neutral position ("element near grid 3 / B"), so the task is completable without a pointer.
-- The Measure tool must work from the keyboard: Tab to a snap point list, Enter to place.
-- Touch: one-finger drag pans, two-finger pinch zooms (track two pointers; `touch-action: none` is already set). Hotspots must be at least 24 px at fit zoom or zoom-to-target on focus.
-- Colour is never the only signal: selected, right and wrong states also differ in stroke pattern or carry a ✓/✗ marker.
+All built (the last items in Chunk 5) and exercised once by keyboard only: a locate question answered with Tab, Enter and Escape, and the bedroom area measured from the snap-point list.
+
+- The SVG is focusable; arrow keys pan, + and - zoom, 0 fits.
+- Every hotspot is a focusable `role="button"`. Before grading its label is neutral ("Drawing element 12") so that screen-reader users are not handed the answer; after grading it is the element's real name. Tab order follows reading order (top to bottom, then left to right): the hotspots are drawn twice, once in reading order for the keyboard (a layer that never takes the mouse) and once in drawing order for the mouse, so click targets did not change. Escape leaves the drawing for the next control, so nobody has to tab through every element.
+- "List elements" (a toggle in the toolbar) lists the clickable elements as buttons labelled by neutral position ("Element 19: near grid 2/A, 23% across, 26% down"); choosing one picks it, and focusing or hovering one outlines it on the drawing. After grading the list shows each element's name, with a tick or a cross.
+- While measuring, the snap points are listed as buttons ("Point 7: 12'-0" across, 13'-0" down", measured from the top-left snap point): Tab to one and press Enter to place a ruler point there; the focused point is ringed on the drawing. (A list of buttons, not a dropdown: on a Mac the arrow keys open a dropdown's menu instead of choosing.)
+- Touch: one-finger drag pans, two-finger pinch zooms about the midpoint. Hotspots smaller than 24 px are zoomed to at least 24 px when they get keyboard focus, and anything focused off-screen is panned into view.
+- Colour is never the only signal: highlighted elements are dotted, selected ones dashed, right ones solid and heavy with a tick badge, wrong ones dashed and heavy with a cross badge (line widths are in screen pixels, so they look the same at any zoom). The feedback says "marked with a tick", not only "outlined in green".
 - Plan questions are in `DESKTOP_ONLY_TYPES`, so phone-friendly sessions skip them.
 
 ## 14. Definition of done
@@ -504,7 +505,7 @@ Built against the plan: 35 `plan` (target 34) and 7 flashcards (target 8), both 
 | Chunk 2 (done 2026-11-15) | 18 | Sheets A-103 roof plan, A-201 south elevation and A-402 unit reflected ceiling plan, with an elevation marker on the floor plan; plan-reading-types (9) and plan-reading-scale (9) |
 | Chunk 3 (done 2026-11-15) | 12 | New plan sets retail-strip, office-floor and podium-mixed-use (parking level and section); plan-reading-buildings (12) |
 | Chunk 4 (done 2026-11-15) | 18 | The plan-to-spreadsheet type plangrid (section 13.4), drawings on document reviews, a stairs parameter for spot-the-problem, an area schedule on the office floor; plan-reading-program (10 more) and plan-reading-bridge (8) |
-| Chunk 5 | 1 | Ground floor and typical apartment floor for the podium set; a timer on plangrid; capstone plan-reading-case; accessibility pass (13.6); set status to built |
+| Chunk 5 (done 2026-11-15) | 1 | Ground floor (A-101) and typical floor (A-102) for the podium set, with cores that line up floor to floor; a timer on plangrid; the capstone plan-reading-case-plangrid-kettner-commons; the accessibility pass (13.6); status built |
 | **Total** | **70** | |
 <!-- CHUNKS:END -->
 

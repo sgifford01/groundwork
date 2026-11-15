@@ -28,6 +28,11 @@ import { buildSheetData, gradeGrid, type GradeOptions, type Gradeable, type Grid
 import { gradeNumeric } from './simple';
 import type { MistakeCategory } from '../content/schema';
 
+/** A plan-to-spreadsheet question with a clock (a capstone). */
+export function isTimedPlanGrid(item: PlanGridItem): item is PlanGridItem & { minutes: number; passMark: number; brief: string[] } {
+  return item.minutes !== undefined && item.passMark !== undefined && item.brief !== undefined;
+}
+
 /** The drawing for one attempt: the seed picks one of the figure's parameter variants. */
 export function figureFor(item: { id: string; figure: FigureSpec }, seed: number): PlanSet {
   const rng = seededRng(item.id, seed);
@@ -164,6 +169,9 @@ export function modelAttempt(item: PlanGridItem, set: PlanSet, solution: GridAtt
 export function planGridProblems(item: PlanGridItem): string[] {
   const problems: string[] = [];
   if (!planSetDef(item.figure.set)) return [`unknown plan set "${item.figure.set}"`];
+  const timedFields = [item.minutes, item.passMark, item.brief].filter((v) => v !== undefined).length;
+  if (timedFields !== 0 && timedFields !== 3) problems.push('a timed plan-to-spreadsheet question needs all of minutes, passMark and brief (or none of them)');
+  if (timedFields === 3 && item.hints.length > 0) problems.push('a timed question shows no hints: leave hints empty');
   const names = item.workbook.sheets.map((s) => s.name);
   const seen = new Set<string>();
   for (const t of item.takeoffs) {

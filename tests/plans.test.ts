@@ -451,7 +451,85 @@ describe('podium-mixed-use: facts agree with what is drawn', () => {
       expect(dimOf(set, 'A-301', 'dim-retail-height')).toBe(f.retail_height);
       expect(dimOf(set, 'A-301', 'dim-parking-height')).toBe(f.parking_height);
       expect(byRole(set, 'A-301', 'podium').length).toBe(1);
-      expect(set.sheets.map((s) => s.id)).toEqual(['G-001', 'A-100', 'A-301']);
+      expect(set.sheets.map((s) => s.id)).toEqual(['G-001', 'A-100', 'A-101', 'A-102', 'A-301']);
+
+      // the ground floor: shops along the street, and rooms that fill the footprint exactly
+      const totalArea = (id: string) => sheetOf(set, id).elements.reduce((n, e) => n + (e.area ?? 0), 0);
+      const shops = byRole(set, 'A-101', 'retail-bay');
+      expect(shops.length).toBe(f.retail_suites);
+      expect(byRole(set, 'A-101', 'storefront').length).toBe(f.retail_suites);
+      expect(areaOf(set, 'A-101', ['retail-bay'])).toBeCloseTo(f.retail_sf, 6);
+      for (const shop of shops) expect(shop.area).toBeCloseTo(f.suite_sf, 6);
+      const frontages = shops.map((_, i) => dimOf(set, 'A-101', `dim-frontage-${i + 1}`));
+      expect(frontages.reduce((a, b) => a + b, 0)).toBeCloseTo(f.retail_frontage, 6);
+      expect(f.retail_frontage).toBeCloseTo(f.row_length, 9);
+      expect(dimOf(set, 'A-101', 'dim-shop-depth')).toBeCloseTo(f.retail_depth, 9);
+      expect(dimOf(set, 'A-101', 'dim-length')).toBeCloseTo(f.garage_length, 9);
+      expect(dimOf(set, 'A-101', 'dim-depth')).toBe(f.garage_width);
+      expect(f.ground_sf).toBe(f.garage_sf);
+      expect(totalArea('A-101')).toBeCloseTo(f.ground_sf, 6);
+
+      // the typical floor: apartments by type, their areas, and rooms that fill the floor exactly
+      const flatsOnFloor = byRole(set, 'A-102', 'unit');
+      const tags = (e: PlanSet['sheets'][number]['elements'][number]) => e.marks.flatMap((m) => (m.shape.t === 'text' ? [m.shape.text] : []));
+      const ones = flatsOnFloor.filter((u) => u.name.includes('one-bed'));
+      const twos = flatsOnFloor.filter((u) => u.name.includes('two-bed'));
+      expect(flatsOnFloor.length).toBe(f.floor_units);
+      expect(ones.length).toBe(f.floor_one_beds);
+      expect(twos.length).toBe(f.floor_two_beds);
+      for (const u of ones) {
+        expect(tags(u)).toContain('1BR');
+        expect(u.area).toBeCloseTo(f.one_bed_sf, 9);
+      }
+      for (const u of twos) {
+        expect(tags(u)).toContain('2BR');
+        expect(u.area).toBeCloseTo(f.two_bed_sf, 9);
+      }
+      expect(f.south_one_beds).toBeGreaterThanOrEqual(0);
+      const barWall = sheetOf(set, 'A-102').elements.find((e) => e.id === 'exterior-wall')!.marks[0].shape as Rect;
+      expect(ones.filter((u) => Math.abs((u.marks[0].shape as Rect).y - barWall.y) < 1e-9).length).toBe(f.north_one_beds);
+      expect(areaOf(set, 'A-102', ['unit'])).toBeCloseTo(f.typical_nra_sf, 6);
+      expect(totalArea('A-102')).toBeCloseTo(f.typical_sf, 6);
+      expect(f.typical_sf).toBeCloseTo(f.typical_length * f.typical_depth, 9);
+      expect(dimOf(set, 'A-102', 'dim-length')).toBeCloseTo(f.typical_length, 9);
+      expect(dimOf(set, 'A-102', 'dim-depth')).toBeCloseTo(f.typical_depth, 9);
+      expect(dimOf(set, 'A-102', 'dim-depth-north')).toBeCloseTo(f.unit_depth, 9);
+      expect(dimOf(set, 'A-102', 'dim-north-1')).toBe(f.one_bed_width);
+      expect(f.one_bed_sf).toBe(f.one_bed_width * f.unit_depth);
+      expect(f.two_bed_sf).toBe(f.two_bed_width * f.unit_depth);
+      // the floor plan and the section agree; the apartments sit centred over the ground floor and flush with its east face
+      expect(f.typical_depth).toBe(f.res_bar_depth);
+      expect(barWall.x).toBeGreaterThanOrEqual(24 - 1e-9);
+      expect(barWall.x + barWall.w).toBeCloseTo(f.garage_length, 9);
+      expect(barWall.y).toBeCloseTo((f.garage_width - f.res_bar_depth) / 2, 9);
+      expect(barWall.w).toBeCloseTo(f.typical_length, 9);
+      // totals over every apartment floor
+      expect(f.res_units).toBe(f.floor_units * f.res_storeys);
+      expect(f.res_one_beds + f.res_two_beds).toBe(f.res_units);
+      expect(f.res_gsf).toBeCloseTo(f.typical_sf * f.res_storeys, 6);
+      expect(f.res_nra_sf).toBeCloseTo(f.typical_nra_sf * f.res_storeys, 6);
+      expect(f.res_efficiency).toBeCloseTo(f.typical_nra_sf / f.typical_sf, 9);
+      expect(f.avg_unit_sf).toBeCloseTo(f.typical_nra_sf / f.floor_units, 9);
+      expect(f.above_grade_sf).toBeCloseTo(f.ground_sf + f.res_gsf, 6);
+      // a sanity range, not a standard: the core is the same size however short the floor is, so the smallest floors dip to about 65%
+      expect(f.res_efficiency).toBeGreaterThan(0.6);
+      expect(f.res_efficiency).toBeLessThan(0.9);
+
+      // anything that runs through several floors is in exactly the same place on each sheet it appears on
+      const rectOn = (sheet: string, id: string) => {
+        const el = sheetOf(set, sheet).elements.find((e) => e.id === id);
+        expect(el, `${sheet} has no ${id}`).toBeDefined();
+        return el!.marks[0].shape as Rect;
+      };
+      const sameRect = (a: Rect, b: Rect, what: string) => {
+        for (const key of ['x', 'y', 'w', 'h'] as const) expect(a[key], `${what}: ${key}`).toBeCloseTo(b[key], 9);
+      };
+      for (const id of ['elevator-1', 'elevator-2']) {
+        sameRect(rectOn('A-101', id), rectOn('A-100', id), `${id}, ground floor over garage`);
+        sameRect(rectOn('A-102', id), rectOn('A-100', id), `${id}, typical floor over garage`);
+      }
+      for (const id of ['stair-1', 'stair-2']) sameRect(rectOn('A-101', id), rectOn('A-100', id), `${id}, ground floor over garage`);
+      for (const id of ['stair-3', 'stair-4', 'mech']) sameRect(rectOn('A-101', id), rectOn('A-102', id), `${id}, typical floor over ground floor`);
     });
   }
 });

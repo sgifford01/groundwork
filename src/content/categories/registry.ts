@@ -152,7 +152,7 @@ export const CATEGORIES: Category[] = [
     slug: 'plan-reading',
     title: 'Plan Reading & Building Program',
     tier: 'BIG',
-    status: 'in-progress',
+    status: 'built',
     summary:
       'Read a set of architectural and civil drawings the way you would a paper plan set, then turn what you see into areas, unit counts and a building program.',
     bullets: [

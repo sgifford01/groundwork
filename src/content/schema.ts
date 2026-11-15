@@ -798,6 +798,15 @@ const PlanGrid = z
     /** As for a grid. Takeoff cells count as inputs here, so edge cases may set them. */
     edgeCases: z.array(z.record(z.string(), z.union([z.number(), z.string(), z.boolean()]))).default([]),
     mistakes: z.array(GridMistake).min(1),
+    /**
+     * Give all three to make it a timed challenge (a capstone): the drawing and the sheet stay hidden until the
+     * clock starts, there are no hints, and the sheet is graded when time runs out. As for the `timed` type.
+     */
+    minutes: z.number().positive().optional(),
+    /** Score needed to pass, 0..1. Timed only. */
+    passMark: z.number().min(0).max(1).optional(),
+    /** The requirements, as a short checklist shown beside the sheet. Timed only. */
+    brief: z.array(z.string().min(3)).optional(),
     explanation: z.string().min(3),
   })
   .strict();
