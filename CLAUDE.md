@@ -36,7 +36,7 @@ On screen the tiers are called Core, Large, Medium and Small (`TIER_LABELS`); th
 
 **To build a category, follow `docs/BUILDING_CATEGORIES.md`** and the category's **`src/content/categories/<slug>/BUILD_SPEC.md`** (16 sections; a ready-to-paste BUILD PROMPT is at the bottom). Each folder also holds `spec-data.ts` (worked examples, type mix and chunk plan as data: run `npm run sync-specs` after editing it or the registry) and `items.ts` (two seed questions that set the quality bar). New questions go in `items-<subtopic>.ts` files, which are picked up automatically.
 
-Category questions use the same schema as the core, plus: `category` (stamped by `categoryItems('<slug>', [...])`), `verifiedAsOf` + `sourceUrl` for any real-world rule, `noLegalClaim` for hypothetical arithmetic in a category that needs verification, and three extra types: `judgment`, `docreview`, `plan`. Ids start with the slug; `topic` is a subtopic id; `level` is 1 (Foundations), 2 (Applied) or 3 (Case). Categories are not level-gated. Each concept is owned by one category (section 12 of each spec); new categories may overlap the Excel course but not each other.
+Category questions use the same schema as the core, plus: `category` (stamped by `categoryItems('<slug>', [...])`), `verifiedAsOf` + `sourceUrl` for any real-world rule, `noLegalClaim` for hypothetical arithmetic in a category that needs verification, and four extra types: `judgment`, `docreview`, `plan`, `leasesim`. Ids start with the slug; `topic` is a subtopic id; `level` is 1 (Foundations), 2 (Applied) or 3 (Case). Categories are not level-gated. Each concept is owned by one category (section 12 of each spec); new categories may overlap the Excel course but not each other.
 
 **No law, fee, tax rate or market level is written from memory.** Verify at the primary source, date it and cite it, or make it an explicit hypothetical.
 
@@ -62,26 +62,28 @@ src/
                formulaAssist.ts (which suggestions / argument template to show while typing)
   grading/     gridGrader.ts (sheet grading), simple.ts (numeric + multiple choice),
                advanced.ts (error hunt, guided case, predict, estimate, ordering, go/no-go, shortcuts)
-               category.ts (scenario judgment, document review, plan reading)
+               category.ts (scenario judgment, document review, plan reading), leases.ts (lease simulator)
   content/     schema.ts (THE question schema), topics.ts (core levels + topics), build.ts (helpers),
                functions.ts (THE function catalog), items/*.ts (the CORE questions: protected),
                index.ts (ALL_ITEMS = core; CATEGORY_ITEMS; EVERY_ITEM; itemsOfCategory)
                categories/registry.ts (THE category list), categories/index.ts (collects items*.ts automatically),
                categories/specs.ts (spec rendering), categories/<slug>/{BUILD_SPEC.md, spec-data.ts, items*.ts}
   plans/       generated drawings: model.ts, draw.ts (symbols), mfDoubleLoaded.ts (first plan set), sets.ts
+  leases/      engine.ts: the lease engine (rent roll + market leasing assumptions -> lease-by-lease cash flow)
   learn/       sm2.ts (spaced repetition), mastery.ts, session.ts (session builder), placement.ts, stats.ts,
                category.ts (per-category progress, due everywhere, status rows), start.ts (starts sessions; `category` option)
   store/       progress.ts (localStorage), backup.ts (export/import), session.ts
   xlsx/        taskFile.ts (write a task as .xlsx, read a completed one back)
   components/  grid/Grid.tsx (the spreadsheet), questions/* (one component per type), ItemRunner.tsx, charts.tsx,
                FormulaAssist.tsx (the as-you-type help popup, shared by the grid, the formula box and the guide)
-               plan/PlanViewer.tsx (pan, zoom, measure, hotspots), questions/CategoryQuestions.tsx, CategoryBits.tsx
+               plan/PlanViewer.tsx (pan, zoom, measure, hotspots), leases/LeaseSimulator.tsx, questions/CategoryQuestions.tsx,
+               questions/LeaseQuestion.tsx, CategoryBits.tsx
   pages/       Home (category tiles), CategoryPage (landing page; shows Dashboard for the core), Dashboard (core),
                Practice, SessionPage, Library, Functions, Mistakes, Settings
 scripts/       run.mjs (runs a TS script through Vite), category-status.ts, sync-specs.ts
 docs/          BUILDING_CATEGORIES.md (the builder workflow, checklist and common mistakes)
 tests/         PROTECTED: content, grader, finance (+ finance.ts), engine, learn, xlsx, coverage, functions
-               category system: category-content (every category question), categories (registry, specs, sessions), plans
+               category system: category-content (every category question), categories (registry, specs, sessions), plans, leases
 ```
 
 ## Non-negotiable content rules (core and categories)
@@ -193,13 +195,14 @@ To add a function: add an entry with `name`, `category`, `summary`, `detail`, `a
 - **`estMinutes`:** flashcard 0.5, mcq 1 to 2, numeric / estimate / formula 1 to 3, order 1 to 1.5, explain 3, grid 3 to 10, error hunt 4 to 6, case 10 to 18, timed = minutes + 1.
 - No em dashes in question text (a test enforces it). The content uses British spelling ("colour", "annualise").
 
-### The three category-only types
+### The category-only types
 
 | Type | Key fields | Notes |
 |---|---|---|
 | `judgment` | `options[{ text, rating, why, category? }]` (3 to 5), `explanation`, optional `vars` | Exactly one `best` (1.0); `acceptable` scores 0.5; `poor` 0. Every `why` is shown after grading. |
 | `docreview` | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]`, `vars` | Score = (issues found - wrong flags) / issues. At least as many clean flaggable lines as issues. Text takes `{templates}`. |
 | `plan` | `plan { set, variants, sheet }`, `task` (`locate` / `measure` / `identify`), `explanation` | Answers are formulas over the plan's `facts`. Every variant must be inside the plan set's limits. Text takes `{fact_name|format}`. |
+| `leasesim` | `scenario`, `variants`, `editable`, `task` (`read` / `configure` / `shock`), `explanation` | The lease-by-lease simulator. Answers are formulas over the report's facts (`noi_year_three`). Inputs are addressed by path (`mla.tiNew`, `tenants.suite-200.baseRent`). Graded in `grading/leases.ts`; the engine is `src/leases/engine.ts`. |
 
 Grading for these is in `grading/category.ts`; they are in `ALL_TYPE_LABELS` (use that map for display) and never in `ITEM_TYPE_LABELS`.
 
@@ -246,6 +249,8 @@ Multi-sheet tasks work (sheet tabs, green cross-sheet links, `sheet:` on a mista
 
 **Category system (built 2026-11-14):** registry; home screen tiles that open a description overlay when clicked; landing pages; per-category review and mastery; mixed review; the `judgment`, `docreview` and `plan` types; a minimal plan viewer with one plan set (`mf-double-loaded`: cover, floor plan, enlarged unit plan); a BUILD_SPEC and two seed questions for each of the eight new categories (16 seeds); builder docs; `category-status` and `sync-specs`.
 
-**Not built yet:** the full content of the eight categories (438 questions to go). Run `npm run category-status` for the current counts, and keep each category's `status` in the registry up to date (`planned` → `in-progress` → `built`).
+**ARGUS chunk 4 (built 2026-11-14, first by design):** the lease engine, the lease simulator, the `leasesim` type and 9 questions. The build order is at the end of `docs/BUILDING_CATEGORIES.md`.
+
+**Not built yet:** most of the content of the eight categories. Run `npm run category-status` for the current counts, and keep each category's `status` in the registry up to date (`planned` → `in-progress` → `built`).
 
 Ideas for the core course, not built: more multi-sheet tasks; AVERAGEIFS and XMATCH support; a monthly IRR-hurdle waterfall with several tiers; more capstones (student housing near UCSD, retail).

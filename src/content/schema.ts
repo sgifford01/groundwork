@@ -620,6 +620,117 @@ const PlanItem = z
   })
   .strict();
 
+// ---- lease simulator: answer from, or by editing, a generated lease-by-lease cash flow ----
+
+const RecoveryType = z.enum(['nnn', 'gross', 'base-year', 'stop']);
+
+const LeaseTenant = z
+  .object({
+    id: ElementKey, // e.g. "suite-200"
+    name: z.string().min(2),
+    sf: z.number().positive(),
+    /** Analysis year the current lease began: 1 = with the analysis, 0 or negative = already in place. */
+    startYear: z.number().int().max(1),
+    /** Last year of the current lease, inclusive. 0 = vacant when the analysis starts. */
+    endYear: z.number().int().min(0),
+    baseRent: z.number().min(0),
+    escalation: z.number().min(0).max(0.2),
+    recovery: RecoveryType,
+    baseYearExpenses: z.number().positive().optional(),
+    stopPsf: z.number().positive().optional(),
+  })
+  .strict();
+
+const LeaseScenario = z
+  .object({
+    building: z
+      .object({
+        sf: z.number().positive(),
+        expensesYear1: z.number().positive(),
+        expenseGrowth: z.number(),
+        generalVacancy: z.number().min(0).max(0.5),
+        creditLoss: z.number().min(0).max(0.2),
+        reserves: z.number().min(0),
+      })
+      .strict(),
+    tenants: z.array(LeaseTenant).min(1).max(8),
+    mla: z
+      .object({
+        marketRent: z.number().positive(),
+        marketGrowth: z.number(),
+        renewalProbability: z.number().min(0).max(1),
+        downtimeMonths: z.number().min(0).max(12),
+        termYears: z.number().int().min(1).max(15),
+        escalation: z.number().min(0).max(0.2),
+        tiNew: z.number().min(0),
+        tiRenew: z.number().min(0),
+        lcNew: z.number().min(0).max(0.2),
+        lcRenew: z.number().min(0).max(0.2),
+        freeNew: z.number().min(0).max(12),
+        freeRenew: z.number().min(0).max(12),
+        recovery: RecoveryType,
+      })
+      .strict(),
+    /** Years shown. One more year is projected behind the scenes for the resale. */
+    years: z.number().int().min(3).max(10),
+    valuation: z.object({ discount: z.number().positive(), exitCap: z.number().positive(), saleCost: z.number().min(0).max(0.2) }).strict().optional(),
+  })
+  .strict();
+
+/** A numeric input of the scenario: "building.expensesYear1", "mla.renewalProbability", "tenants.suite-200.baseRent". */
+const LeasePath = z.string().regex(/^(building|mla)\.[A-Za-z0-9]+$|^tenants\.[a-z0-9]+(-[a-z0-9]+)*\.[A-Za-z]+$/, 'paths look like "mla.tiNew" or "tenants.suite-200.baseRent"');
+
+const LeaseTask = z.discriminatedUnion('kind', [
+  // read or compute a number from the generated report; the key is a formula over the report's facts
+  z
+    .object({
+      kind: z.literal('read'),
+      answer: Formula,
+      format: Format,
+      unit: z.string().optional(),
+      tolerance: Tolerance.default({ pct: 0.005 }),
+      mistakes: z.array(NumericMistake).min(1),
+    })
+    .strict(),
+  // edit the inputs until the generated cash flow matches the one the correct inputs produce
+  z
+    .object({
+      kind: z.literal('configure'),
+      /** The correct value of every input the student has to change (hidden until graded). */
+      target: z.record(LeasePath, z.number()),
+      /** The report lines that are compared with the key. Score = share that match. */
+      checks: z.array(z.object({ fact: VarName, label: z.string().min(3) }).strict()).min(1).max(8),
+      tolerance: Tolerance.default({ pct: 0.001 }),
+    })
+    .strict(),
+  // predict what a change to one input does to one output, then watch it happen
+  z
+    .object({
+      kind: z.literal('shock'),
+      change: z.object({ path: LeasePath, set: z.number(), label: z.string().min(3) }).strict(),
+      output: z.object({ fact: VarName, label: z.string().min(3), format: Format }).strict(),
+      /** The size estimate counts if it is within this fraction of the true % change. */
+      band: z.number().positive().default(0.35),
+      /** The tempting wrong intuition. */
+      trap: z.string().min(3),
+    })
+    .strict(),
+]);
+
+const LeaseSim = z
+  .object({
+    ...base,
+    type: z.literal('leasesim'),
+    scenario: LeaseScenario,
+    /** Input overrides, one set chosen per attempt, e.g. [{ "mla.marketRent": 44 }]. Empty = always the scenario as written. */
+    variants: z.array(z.record(LeasePath, z.number())).default([]),
+    /** Inputs the student may edit. Everything else is locked. */
+    editable: z.array(LeasePath).default([]),
+    task: LeaseTask,
+    explanation: z.string().min(3),
+  })
+  .strict();
+
 export const ItemSchema = z.discriminatedUnion('type', [
   Flashcard,
   Mcq,
@@ -638,6 +749,7 @@ export const ItemSchema = z.discriminatedUnion('type', [
   Judgment,
   DocReview,
   PlanItem,
+  LeaseSim,
 ]);
 
 export type Item = z.infer<typeof ItemSchema>;
@@ -662,6 +774,8 @@ export type ShortcutItem = Extract<Item, { type: 'shortcut' }>;
 export type JudgmentItem = Extract<Item, { type: 'judgment' }>;
 export type DocReviewItem = Extract<Item, { type: 'docreview' }>;
 export type PlanQItem = Extract<Item, { type: 'plan' }>;
+export type LeaseSimItem = Extract<Item, { type: 'leasesim' }>;
+export type LeaseScenarioSpec = z.infer<typeof LeaseScenario>;
 export type GridMistakeSpec = z.infer<typeof GridMistake>;
 export type BugSpec = z.infer<typeof Bug>;
 
@@ -671,8 +785,8 @@ export const SHEET_GRADED_TYPES: ItemType[] = ['grid', 'formula', 'case', 'timed
 /** Item types that contain a workbook at all. */
 export const WORKBOOK_TYPES: ItemType[] = ['grid', 'formula', 'case', 'timed', 'errorhunt', 'predict'];
 
-/** The three types used only outside the core course. */
-export type CategoryOnlyType = 'judgment' | 'docreview' | 'plan';
+/** The types used only outside the core course. */
+export type CategoryOnlyType = 'judgment' | 'docreview' | 'plan' | 'leasesim';
 export type CoreItemType = Exclude<ItemType, CategoryOnlyType>;
 
 /** The core course's 14 types. */
@@ -699,7 +813,8 @@ export const ALL_TYPE_LABELS: Record<ItemType, string> = {
   judgment: 'Scenario judgment',
   docreview: 'Document review',
   plan: 'Plan reading',
+  leasesim: 'Lease simulator',
 };
 
 /** Types that show a spreadsheet or drawing, or need a real keyboard, so they are left out of phone-friendly sessions. */
-export const DESKTOP_ONLY_TYPES: ItemType[] = ['grid', 'errorhunt', 'case', 'timed', 'shortcut', 'formula', 'predict', 'plan'];
+export const DESKTOP_ONLY_TYPES: ItemType[] = ['grid', 'errorhunt', 'case', 'timed', 'shortcut', 'formula', 'predict', 'plan', 'leasesim'];

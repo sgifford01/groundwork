@@ -8,6 +8,7 @@
  * On top of the schema, each question is checked against the registry here,
  * so a mistake shows up as a clear error the moment the app or tests load.
  */
+import { leaseItemProblems } from '../../grading/leases';
 import { planSetDef, buildPlanSet } from '../../plans/sets';
 import { ItemSchema, type Item, type ItemInput } from '../schema';
 import { categoryBySlug, categoryTopic, CORE_CATEGORY } from './registry';
@@ -51,6 +52,10 @@ function check(item: Item, folder: string): void {
         if ((l.cells?.length ?? 0) !== cols - 1) fail(item.id, `line "${l.id}" needs ${cols - 1} cells to match the columns`);
       }
     }
+  }
+  if (item.type === 'leasesim') {
+    const problems = leaseItemProblems(item);
+    if (problems.length) fail(item.id, problems.join('; '));
   }
   if (item.type === 'plan') {
     if (!planSetDef(item.plan.set)) fail(item.id, `unknown plan set "${item.plan.set}"`);

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Tier | Large (tier id `BIG`): 70 questions, two difficulty levels (1 Foundations, 2 Applied), one capstone case (level 3) |
-| Status when this spec was written | `planned`, 2 seed questions built |
+| Status | `in-progress`: 2 seeds plus Chunk 4 (lease engine, simulator, 9 questions) built on 2026-11-14 |
 | Build with | **Fable 5.2, high effort** (it includes a new engine and component) |
 | Legal verification | Not required |
 | Read first | `CLAUDE.md`, `docs/BUILDING_CATEGORIES.md`, then this file, then `items.ts` in this folder (the two seeds are the quality bar) |
@@ -334,7 +334,7 @@ Use these as distractors, `mistakes` and error-hunt bugs. Each line is "wrong id
 | Explain why | `explain` | 2 |
 | Document review | `docreview` | 5 |
 | Scenario judgment | `judgment` | 1 |
-| NEW TYPE to build (see section 13) | `leasesim` | 6 |
+| Lease simulator | `leasesim` | 6 |
 | Timed challenge | `timed` | 1 |
 | **Total** | | **70** |
 <!-- TYPEMIX:END -->
@@ -435,92 +435,47 @@ Do not cite current market rents, cap rates or CPI as fact. If a question needs 
 
 ## 13. New components: the lease engine and the lease-by-lease simulator
 
-Build in Chunk 4, in this order: engine (pure functions, tested) → schema type → component → questions.
+**Built on 2026-11-14 (Chunk 4, done first).** This section now describes what exists. Extend it; do not rewrite it.
 
 ### 13.1 Lease engine: `src/leases/engine.ts` (no UI code)
 
-```ts
-export type RecoveryType = 'nnn' | 'gross' | 'base-year' | 'stop';
+- Types: `Tenant` (id, name, sf, `startYear`, `endYear`, `baseRent`, `escalation`, `recovery`, optional `baseYearExpenses` / `stopPsf`), `MarketAssumptions` (market rent and growth, renewal probability, downtime, term, escalation of new leases, TI / commission / free rent for new and renewal, recovery structure of new leases), `Building` (sf, year-1 expenses and growth, general vacancy, credit loss, reserves per SF).
+- `projectSuite(building, tenant, mla, years)` and `projectCashFlow(building, tenants, mla, years)` return one row per year. `blended(mla)` gives the probability-weighted downtime, free rent, TI and commission. `valuation(cf, hold, { discount, exitCap, saleCost })` discounts `hold` years and a resale on the NEXT year's NOI. `facts(cf, hold?, valuation?)` names every report line (`noi_year_three`, `recoveries_year_one`, `cash_flow_year_five`, `resale`, `present_value`); the line names are in `CASH_FLOW_LINES`.
+- Conventions: whole years; a lease ends at the end of `endYear` and the space rolls the next year (`endYear: 0` = vacant at the start); downtime and free rent fall inside the rollover year; revenue deductions are zero or negative, costs are positive; general vacancy is an allowance net of turnover vacancy; a new base-year or stop lease resets its threshold to the rollover year's expenses; recoveries are prorated for downtime in the rollover year; commissions are a % of first-year rent x term.
+- Tests: `tests/leases.test.ts` reproduces the worked examples of section 4 through the engine and checks the accounting identities under 40 random scenarios. Any engine change must keep them passing; add a test for each new behaviour (for example CPI escalations, gross-up, percentage rent, monthly periods).
 
-export interface Tenant {
-  id: string;            // "suite-200"
-  name: string;
-  sf: number;
-  startYear: number;     // analysis years are 1..N; a lease in place has startYear <= 1
-  endYear: number;       // last year of the current lease (inclusive)
-  baseRent: number;      // $/SF/yr in the tenant's first lease year
-  escalation: number;    // annual %, compounding
-  recovery: RecoveryType;
-  baseYearExpenses?: number; // building total, for 'base-year'
-  stopPsf?: number;          // for 'stop'
-}
-
-export interface MarketAssumptions {
-  marketRent: number;      // $/SF/yr in year 1
-  marketGrowth: number;    // annual %
-  renewalProbability: number;
-  downtimeMonths: number;  // if the tenant leaves
-  termYears: number;
-  tiNew: number; tiRenew: number;   // $/SF
-  lcNew: number; lcRenew: number;   // % of first-term rent
-  freeNew: number; freeRenew: number; // months
-  recovery: RecoveryType;  // structure of speculative leases (base year resets to the rollover year)
-}
-
-export interface Building {
-  sf: number;
-  expensesYear1: number;   // recoverable, building total
-  expenseGrowth: number;
-  generalVacancy: number;  // allowance, % of PGR, net of turnover vacancy
-  creditLoss: number;      // % of PGR
-  reserves: number;        // $/SF/yr, below NOI
-}
-
-export interface CashFlowYear {
-  year: number;
-  baseRent: number; recoveries: number; freeRent: number;      // freeRent <= 0
-  turnoverVacancy: number; generalVacancy: number; creditLoss: number; // <= 0
-  effectiveGrossRevenue: number; operatingExpenses: number; noi: number;
-  tenantImprovements: number; leasingCommissions: number; reserves: number;
-  cashFlowBeforeDebt: number;
-  byTenant: Record<string, { baseRent: number; recovery: number; status: 'in-place' | 'downtime' | 'speculative' }>;
-}
-
-export function projectCashFlow(building: Building, tenants: Tenant[], mla: MarketAssumptions, years: number): CashFlowYear[];
-export function valuation(cf: CashFlowYear[], discount: number, exitCap: number, saleCost: number): { pv: number; resale: number };
-export function facts(cf: CashFlowYear[]): Record<string, number>; // e.g. noi_year_three, recoveries_year_one: names valid as formula variables
-```
-
-Simplifications to state in the component's help text: annual periods; downtime and free rent are prorated within the rollover year; one MLA for the whole building; one rollover per suite inside the analysis period is enough (a second is welcome if tested).
-
-Tests (`tests/leases.test.ts`): every worked example in section 4 reproduced through the engine; a building with all-NNN tenants recovers exactly 100% of expenses when full; renewal probability 1 gives no downtime; probability 0 gives full downtime; revenue lines sum; randomized inputs (30 seeds) keep NOI = EGR - expenses and cash flow = NOI - TI - LC - reserves to the cent.
-
-### 13.2 Item type `leasesim` (extend `src/content/schema.ts`; follow "Adding a new question type" in `CLAUDE.md`)
-
-Model it on the existing `plan` type, which already solves "answer from a generated artefact":
+### 13.2 Item type `leasesim` (in `src/content/schema.ts`; graded by `src/grading/leases.ts`)
 
 ```ts
 { type: 'leasesim',
-  scenario: { building, tenants, mla, years },   // the starting inputs
-  variants?: Partial<scenario>[],                 // optional input sets, one chosen per attempt
-  locked: string[],                               // input paths the student may not edit, e.g. 'building.*'
+  scenario: { building, tenants, mla, years, valuation? },   // see src/content/categories/argus/scenario.ts
+  variants: [{ 'mla.marketRent': 44 }, ...],                 // optional input overrides, one set per attempt
+  editable: ['tenants.suite-300.baseRent', 'mla.tiNew'],     // inputs the student may change; everything else is locked
   task:
-    | { kind: 'read', answer: Formula, format, tolerance, mistakes }        // a formula over facts(cf)
-    | { kind: 'configure', goal: string, checks: { fact: string, equals: Formula, tolerance }[] }
-        // the student edits tenant/MLA inputs until the generated cash flow matches a key scenario
-    | { kind: 'shock', change: { path: string, set: number }, output: string, band: number, trap: string }
-        // predict direction and size of a change, then the simulator shows it (reuse gradePredict's scoring)
+    | { kind: 'read', answer: Formula, format, tolerance, mistakes }      // a formula over the report's facts
+    | { kind: 'configure', target: { path: correctValue }, checks: [{ fact, label }], tolerance }
+    | { kind: 'shock', change: { path, set, label }, output: { fact, label, format }, band, trap }
   explanation }
 ```
 
-Grading API in `src/grading/leases.ts`: `leaseSimFor(item, seed)`, `gradeLeaseRead(item, cf, typed)` (delegate to `gradeNumeric` exactly as `gradeMeasure` does in `grading/category.ts`), `gradeLeaseConfigure(item, studentScenario)` returning per-check pass/fail and score = passed / checks, `gradeLeaseShock`. Add `leasesim` to `ALL_TYPE_LABELS` (not to `ITEM_TYPE_LABELS`), to `DESKTOP_ONLY_TYPES`, to `ItemRunner`, and to `tests/category-content.test.ts` with the same style of checks the `plan` type has.
+- Inputs are addressed by path: `building.<field>`, `mla.<field>`, `tenants.<id>.<field>` (numeric fields only).
+- `read`: graded like a numeric question whose variables are the facts of the STARTING scenario (`gradeLeaseRead`). Prompts, explanations and mistake labels may use `{fact_name|format}`.
+- `configure`: the student edits inputs; score = share of `checks` whose report line matches the line produced by the `target` inputs (`gradeLeaseConfigure`). The tests require that the start fails, the target passes, every target input is noticed by at least one check, and that changing any other editable input costs credit. So choose checks that cover every editable input.
+- `shock`: the simulator is locked; the student predicts direction and % size; half credit for direction, full with the size inside `band` (`shockTruth`, `gradeLeaseShock`). The direction must be the same for every variant.
+- `leaseItemProblems(item)` runs at load: unique tenant ids, leased area within the building, paths that exist, targets that are editable, facts that exist.
+- The type is in `ALL_TYPE_LABELS` and `DESKTOP_ONLY_TYPES`, routed in `ItemRunner`, and has its own section in `tests/category-content.test.ts`.
 
-### 13.3 Component: `src/components/leases/LeaseSimulator.tsx`
+### 13.3 Component: `src/components/leases/LeaseSimulator.tsx` (question wrapper: `components/questions/LeaseQuestion.tsx`)
 
-- **Layout (original design).** Left: a tenant table (one row per suite; editable cells for unlocked fields) above a compact "market assumptions" form. Right: the generated cash flow as a table, years across, lines down, with a toggle between "building" and "by tenant". A change to any input recomputes immediately and briefly highlights the cells that changed.
-- **Interactions.** Edit a cell (Enter commits, Esc cancels); "Reset inputs"; click a cash flow cell to see how it was computed (a one-line trace: "Suite 200 base rent, year 3: 12,000 SF x $38.19"). No drag, no charts needed.
-- **Do not** imitate ARGUS tab names, input screens or report styling.
-- **Accessibility.** Real `<table>` markup with `<th scope>`; inputs labelled by row and column (`aria-label="Suite 200, base rent"`); recomputed values announced through one `aria-live="polite"` summary ("NOI year 3 changed from ... to ..."); all functions reachable by keyboard; highlights never rely on colour alone (add a ▲/▼ marker).
+- Layout: rent roll table, market leasing assumptions and building inputs on top; the generated cash flow underneath (years across, lines down) with a toggle to "Base rent by tenant"; resale and present value below. One extra year is shown in italics because the resale needs it.
+- Editable inputs are yellow with blue text, like input cells in the grid. An input that differs from the starting scenario carries a bar marker; cash flow cells that moved on the last change are highlighted and carry a ▲ or ▼. "Reset inputs" returns to the start.
+- In the by-tenant view each figure is a button whose click (or tooltip) gives a one-line trace of how it was computed; rollover years are tagged "rolls".
+- Accessibility: real table markup with row and column headers; every input has a label naming its row and field; recalculation is announced through an `aria-live` region; no state is shown by colour alone.
+- It does not imitate ARGUS tabs, screens or report styling, and must not start to.
+
+### 13.4 Ideas not built (add only with tests)
+
+Monthly periods; CPI escalations with floor and cap; gross-up of variable expenses; controllable-expense caps; percentage rent; more than one set of market leasing assumptions; editing the recovery TYPE of a lease (paths are numeric only today); a `leasesim` attachment for grid questions so a simulator build can be reconciled cell by cell in the grid.
 
 ## 14. Definition of done
 
@@ -547,7 +502,7 @@ One chunk per session. Commit after each. Set `status: 'in-progress'` with the f
 | Chunk 1 | 16 | argus-rentroll (8) and argus-baserent (8 more) |
 | Chunk 2 | 18 | argus-recoveries (10 more) and argus-concessions (8) |
 | Chunk 3 | 18 | argus-mla (11) and argus-vacancy (7) |
-| Chunk 4 | 9 | Build the lease engine, the simulator component and the leasesim type (section 13); argus-simulator (6) and the first 3 of argus-reports |
+| Chunk 4 (done 2026-11-14, built first) | 9 | The lease engine, the simulator component and the leasesim type (section 13); argus-simulator (6) and the first 3 of argus-reports |
 | Chunk 5 | 7 | argus-reports (6 more) and the capstone argus-case (1); set status to built |
 | **Total** | **70** | |
 <!-- CHUNKS:END -->

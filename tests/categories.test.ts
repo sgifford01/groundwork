@@ -270,8 +270,10 @@ describe('build specs', () => {
         expect(data.chunks.reduce((n, c) => n + c.items, 0), 'chunks').toBe(cat.targetItems);
         expect(data.chunks[0].items, 'chunk 0 is the seeds').toBe(2);
         for (const c of data.chunks.slice(1)) expect(c.items, `${c.title} is too big for one session`).toBeLessThanOrEqual(25);
-        // the seeds named in chunk 0 are the real seed ids
-        for (const seed of itemsOfCategory(cat.slug).slice(0, 2)) expect(data.chunks[0].scope, seed.id).toContain(seed.id);
+        // the two seeds named in chunk 0 are real questions of this category
+        const named = data.chunks[0].scope.match(new RegExp(`\\b${cat.slug}-[a-z0-9-]+`, 'g')) ?? [];
+        expect(named.length, 'chunk 0 names its two seed questions').toBe(2);
+        for (const id of named) expect(itemById(id)?.category, id).toBe(cat.slug);
       });
 
       it('names every subtopic, the build model, the protection rule and the legal flag', () => {

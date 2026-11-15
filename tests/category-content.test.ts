@@ -20,6 +20,7 @@ import {
   type GoNoGoItem,
   type Item,
   type JudgmentItem,
+  type LeaseSimItem,
   type McqItem,
   type NumericItem,
   type OrderItem,
@@ -43,6 +44,7 @@ import {
   renderDocument,
 } from '../src/grading/category';
 import { baseKeyValues, checkAnswerKey, collectTargets, gradeGrid, solutionAttempt, type GridAttempt } from '../src/grading/gridGrader';
+import { applyPaths, configureKey, getPath, gradeLeaseConfigure, gradeLeaseRead, gradeLeaseShock, leaseItemProblems, runScenario, scenarioFor, shockTruth } from '../src/grading/leases';
 import { buildMcqOptions, gradeNumeric, numericAnswer } from '../src/grading/simple';
 import { buildPlanSet } from '../src/plans/sets';
 
@@ -367,6 +369,101 @@ describe('category content: plan reading', () => {
           const options = identifyOptions(item, seededRng(item.id, 1));
           expect(options.filter((o) => o.correct).length).toBe(1);
           expect(new Set(options.map((o) => o.text)).size).toBe(options.length);
+        });
+      }
+    });
+  }
+});
+
+describe('category content: lease simulator', () => {
+  it('runs once per question of these types (an empty list is fine)', () => expect(true).toBe(true));
+  for (const item of of<LeaseSimItem>('leasesim')) {
+    describe(item.id, () => {
+      const starts = (item.variants.length ? item.variants : [{}]).map((v) => applyPaths(item.scenario, v));
+
+      it('the scenario is sound, and every text renders from the report for every variant', () => {
+        expect(leaseItemProblems(item)).toEqual([]);
+        const texts = [item.prompt, item.explanation, ...item.hints];
+        if (item.task.kind === 'read') texts.push(...item.task.mistakes.map((m) => m.label));
+        for (const start of starts) {
+          const run = runScenario(start);
+          expect(run.cf.length).toBe(start.years + 1);
+          for (const [name, value] of Object.entries(run.facts)) expect(Number.isFinite(value), name).toBe(true);
+          for (const text of texts) {
+            for (const m of text.matchAll(COMPUTED)) expect(isCellError(evalFormula(m[1], run.facts)), m[1]).toBe(false);
+            expect(LEFTOVER.test(renderTemplate(text, run.facts, [])), text).toBe(false);
+          }
+        }
+        // every seed lands on one of the variants
+        for (let seed = 1; seed <= 12; seed++) expect(starts.some((s) => JSON.stringify(s) === JSON.stringify(scenarioFor(item, seed)))).toBe(true);
+      });
+
+      if (item.task.kind === 'read') {
+        const task = item.task;
+        it('answer key is finite, accepted as displayed, and every mistake is caught by name', () => {
+          for (const start of starts) {
+            const run = runScenario(start);
+            const answer = evalFormula(task.answer, run.facts);
+            expect(typeof answer === 'number' && Number.isFinite(answer)).toBe(true);
+            expect(gradeLeaseRead(item, run, String(answer)).correct).toBe(true);
+            expect(gradeLeaseRead(item, run, formatValue(answer as number, task.format)).correct, 'the answer as displayed').toBe(true);
+            expect(gradeLeaseRead(item, run, '').correct).toBe(false);
+            expect(gradeLeaseRead(item, run, String((answer as number) * 2.5)).correct).toBe(false);
+            for (const m of task.mistakes) {
+              const v = evalFormula(m.formula, run.facts);
+              expect(typeof v, `mistake ${m.formula}`).toBe('number');
+              const res = gradeLeaseRead(item, run, String(v));
+              expect(res.correct, `mistake ${m.formula} is graded correct`).toBe(false);
+              expect(res.category, `mistake ${m.formula} not recognised`).toBe(m.category);
+            }
+          }
+        });
+      }
+
+      if (item.task.kind === 'configure') {
+        const task = item.task;
+        it('starts wrong, the correct inputs score 100%, and every input to be corrected is actually tested', () => {
+          for (const start of starts) {
+            const before = gradeLeaseConfigure(item, start, start);
+            expect(before.score, 'the starting inputs must not already pass').toBeLessThan(1);
+            const key = configureKey(item, start);
+            expect(gradeLeaseConfigure(item, start, key).score).toBe(1);
+            for (const [path, value] of Object.entries(task.target)) {
+              expect(getPath(start, path), `${path} already has its target value`).not.toBe(value);
+              // fix everything except this one input: at least one check must still fail
+              const allButOne = applyPaths(start, Object.fromEntries(Object.entries(task.target).filter(([p]) => p !== path)));
+              expect(gradeLeaseConfigure(item, start, allButOne).score, `no check notices a wrong ${path}`).toBeLessThan(1);
+            }
+            // editing an input that should be left alone must cost credit
+            for (const path of item.editable.filter((p) => !(p in task.target))) {
+              const was = getPath(key, path) ?? 0;
+              const nudged = applyPaths(key, { [path]: was + Math.max(1, Math.abs(was) * 0.1) });
+              const res = gradeLeaseConfigure(item, start, nudged);
+              expect(res.score, `${path} can be changed freely without any check noticing`).toBeLessThan(1);
+            }
+          }
+          expect(new Set(task.checks.map((c) => c.fact)).size).toBe(task.checks.length);
+        });
+      }
+
+      if (item.task.kind === 'shock') {
+        const task = item.task;
+        it('moves the output the same way for every variant, by a visible amount, and is scored in halves', () => {
+          const directions = new Set<string>();
+          for (const start of starts) {
+            expect(getPath(start, task.change.path), 'the change must change something').not.toBe(task.change.set);
+            const t = shockTruth(item, start);
+            directions.add(t.direction);
+            expect(t.direction).not.toBe('none');
+            expect(Math.abs(t.change), 'the change is too small to see').toBeGreaterThan(0.005);
+            const pct = Math.abs(t.change) * 100;
+            expect(gradeLeaseShock(item, t, t.direction, pct).score).toBe(1);
+            expect(gradeLeaseShock(item, t, t.direction, null).score).toBe(0.5);
+            expect(gradeLeaseShock(item, t, t.direction, pct * (1 + task.band * 2.5)).score).toBe(0.5);
+            expect(gradeLeaseShock(item, t, t.direction === 'up' ? 'down' : 'up', pct).score).toBe(0);
+            expect(gradeLeaseShock(item, t, 'none', pct).score).toBe(0);
+          }
+          expect([...directions], 'the direction depends on the variant').toHaveLength(1);
         });
       }
     });

@@ -12,6 +12,7 @@ import { useProgress } from '../store/progress';
 import type { Outcome } from './questions/common';
 import { DocReviewQuestion, JudgmentQuestion, PlanQuestion } from './questions/CategoryQuestions';
 import { GridQuestion } from './questions/GridQuestion';
+import { LeaseSimQuestion } from './questions/LeaseQuestion';
 import {
   EstimateQuestion,
   ExplainQuestion,
@@ -24,7 +25,7 @@ import { CaseQuestion, ErrorHuntQuestion, FormulaQuestion } from './questions/Sh
 import { FlashcardQuestion, McqQuestion, NumericQuestion } from './questions/SimpleQuestions';
 
 /** Types where the keyboard should stay with the sheet or text box after grading. */
-const KEEP_FOCUS: ItemType[] = ['grid', 'timed', 'errorhunt', 'case', 'formula', 'plan', 'docreview'];
+const KEEP_FOCUS: ItemType[] = ['grid', 'timed', 'errorhunt', 'case', 'formula', 'plan', 'docreview', 'leasesim'];
 
 export interface RunnerResult {
   itemId: string;
@@ -125,6 +126,7 @@ export function ItemRunner({
       {item.type === 'judgment' && <JudgmentQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
       {item.type === 'docreview' && <DocReviewQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
       {item.type === 'plan' && <PlanQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
+      {item.type === 'leasesim' && <LeaseSimQuestion item={item} seed={seed} graded={graded} onGraded={onGraded} />}
 
       {item.verifiedAsOf && item.sourceUrl && (
         <div className="q-source">

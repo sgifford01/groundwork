@@ -234,7 +234,7 @@ export const SPEC: SpecData = {
     { title: 'Chunk 1', items: 16, scope: 'argus-rentroll (8) and argus-baserent (8 more)' },
     { title: 'Chunk 2', items: 18, scope: 'argus-recoveries (10 more) and argus-concessions (8)' },
     { title: 'Chunk 3', items: 18, scope: 'argus-mla (11) and argus-vacancy (7)' },
-    { title: 'Chunk 4', items: 9, scope: 'Build the lease engine, the simulator component and the leasesim type (section 13); argus-simulator (6) and the first 3 of argus-reports' },
+    { title: 'Chunk 4 (done 2026-11-14, built first)', items: 9, scope: 'The lease engine, the simulator component and the leasesim type (section 13); argus-simulator (6) and the first 3 of argus-reports' },
     { title: 'Chunk 5', items: 7, scope: 'argus-reports (6 more) and the capstone argus-case (1); set status to built' },
   ],
 };

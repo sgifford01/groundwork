@@ -112,7 +112,7 @@ export const CATEGORIES: Category[] = [
     slug: 'argus',
     title: 'Commercial Leases & ARGUS',
     tier: 'BIG',
-    status: 'planned',
+    status: 'in-progress',
     summary:
       'How office, retail and industrial-style leases turn into cash flow, tenant by tenant, and how to read the reports that lease-by-lease software produces.',
     bullets: [
