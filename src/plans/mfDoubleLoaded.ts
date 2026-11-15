@@ -426,7 +426,8 @@ const PREFIXES: [string, string][] = [
 
 const STOREY_WORDS: Record<number, string> = { 3: 'THREE', 4: 'FOUR', 5: 'FIVE', 6: 'SIX' };
 
-function coverSheet(index: { id: string; title: string }[], storeys: number): PlanSheet {
+/** A cover sheet with a sheet index, the discipline designators and general notes. Shared by every plan set. */
+export function coverSheet(index: { id: string; title: string }[], subtitle: string, project: string = PROJECT): PlanSheet {
   const k = 1;
   const bounds = { x: 0, y: 0, w: 190, h: 126 };
   const els: PlanElement[] = [border(bounds, k)];
@@ -435,8 +436,8 @@ function coverSheet(index: { id: string; title: string }[], storeys: number): Pl
     role: 'project-title',
     name: 'Project title',
     marks: [
-      text(10, 20, PROJECT, 6, { bold: true }),
-      text(10, 27, `A ${STOREY_WORDS[storeys] ?? storeys}-STOREY APARTMENT BUILDING (ILLUSTRATIVE)`, 2),
+      text(10, 20, project, 6, { bold: true }),
+      text(10, 27, subtitle, 2),
       text(10, 31, 'PERMIT SET', 2),
     ],
     hit: hitRect(8, 12, 90, 21),
@@ -475,7 +476,7 @@ function coverSheet(index: { id: string; title: string }[], storeys: number): Pl
       text(10, 115, '3. DO NOT SCALE DRAWINGS FOR CONSTRUCTION. WRITTEN DIMENSIONS GOVERN.', 1.6),
     ],
   });
-  els.push(...titleBlock(bounds, { project: PROJECT, title: 'COVER & SHEET INDEX', sheet: 'G-001', scale: 'NONE' }, k));
+  els.push(...titleBlock(bounds, { project, title: 'COVER & SHEET INDEX', sheet: 'G-001', scale: 'NONE' }, k));
   return { id: 'G-001', title: 'Cover sheet and sheet index', discipline: 'G', scale: { label: 'NONE', ftPerInch: 8 }, bounds, elements: els, snaps: [] };
 }
 
@@ -958,7 +959,8 @@ function build(params: Record<string, number>): PlanSet {
   const a401 = unitPlan(uw, ud);
   const ceiling = unitCeilingPlan(uw, ud);
   const drawings = [site, floor, roof, elevation, section, a401, ceiling.sheet];
-  const sheets = [coverSheet([{ id: 'G-001', title: 'Cover sheet and sheet index' }, ...drawings], storeys), ...drawings];
+  const subtitle = `A ${STOREY_WORDS[storeys] ?? storeys}-STOREY APARTMENT BUILDING (ILLUSTRATIVE)`;
+  const sheets = [coverSheet([{ id: 'G-001', title: 'Cover sheet and sheet index' }, ...drawings], subtitle), ...drawings];
 
   return {
     id: 'mf-double-loaded',

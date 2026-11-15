@@ -100,7 +100,7 @@ All 14 core types (see `CLAUDE.md`), plus four built for categories:
 |---|---|---|---|
 | `judgment` | Chooses the best response to a scenario | `options[{ text, rating: 'best' \| 'acceptable' \| 'poor', why, category? }]` (3 to 5, exactly one `best`), `explanation`, optional `vars` | best 1, acceptable 0.5, poor 0. Every option's `why` is shown afterwards. |
 | `docreview` | Flags the lines of a document that contain a problem | `document { kind, title, columns?, lines[{ id, text, cells?, heading? }] }`, `issues[{ lines, label, category }]` (1 to 5), `vars`, `explanation` | (issues found - wrong flags) / issues, floor 0. Needs at least as many clean lines as issues. Headings and totals cannot be flagged. |
-| `plan` | Clicks, measures or names something on a generated drawing, or says which sheet to open | `plan { set, variants[], sheet }`, `task` of kind `locate` (targets, decoys, `pick`, `onSheet`), `measure` (answer formula over plan facts, mistakes, tool), `identify` (highlight, correct, distractors) or `navigate` (correctSheet, distractorSheets) | right or wrong; measure tasks use a tolerance; a multi-pick locate scores (right - wrong) / picks |
+| `plan` | Clicks, measures or names something on a generated drawing (four plan sets: apartments, retail, office, podium), or says which sheet to open | `plan { set, variants[], sheet }`, `task` of kind `locate` (targets, decoys, `pick`, `onSheet`), `measure` (answer formula over plan facts, mistakes, tool), `identify` (highlight, correct, distractors) or `navigate` (correctSheet, distractorSheets) | right or wrong; measure tasks use a tolerance; a multi-pick locate scores (right - wrong) / picks |
 | `leasesim` | Reads, corrects or predicts with the lease-by-lease simulator | `scenario`, `variants`, `editable`, `task` of kind `read` (answer formula over report facts, mistakes), `configure` (target inputs, checks) or `shock` (change, output, band, trap) | read: right or wrong; configure: share of checked report lines that match; shock: half for direction, full with the size |
 
 A spec may ask for a NEW type (for example `leasesim` in the ARGUS spec). Follow "Adding a new question type" in `CLAUDE.md`, add the label to `ALL_TYPE_LABELS` only, and add a section for the type to `tests/category-content.test.ts` modelled on the `plan` section.
@@ -141,7 +141,7 @@ A spec may ask for a NEW type (for example `leasesim` in the ARGUS spec). Follow
 | Listing a `$`-anchoring slip as a mistake | The grader already diagnoses anchoring; the labels conflict | Leave it out (it is fine as an error-hunt bug) |
 | Document review with too few clean lines | Test fails; flagging everything would score | At least as many clean, flaggable lines as issues, and make the clean lines plausible suspects |
 | Judgment options where two are equally good | Students are marked down arbitrarily | Exactly one `best`; make `acceptable` genuinely second-best and say why |
-| Plan question whose label gives the answer away | No learning | Use symbols as real drawings do; the viewer hides element names until graded |
+| Plan question whose label gives the answer away | No learning | Check every piece of text on the sheet (room labels, notes, project name, cover subtitle) against the question. The viewer hides element names until graded; it cannot hide text you drew |
 | Asking for a plan number that is not a fact | Answer cannot be keyed | Add the fact to the generator and cross-check it against geometry in `tests/plans.test.ts` |
 | Stating a rule "everyone knows" without checking | The app teaches something false or out of date | Verify, date and cite it, or make it a hypothetical |
 | Building past the subtopic target | Test fails; the category drifts from its spec | Stop at the target. If the spec is wrong, change the registry and spec together and run `npm run sync-specs` |
@@ -160,7 +160,7 @@ The owner asked (2026-11-14) for the hardest work to be done first, while the Fa
 | 1 (done 2026-11-14) | `argus` chunk 4: lease engine, simulator component, `leasesim` type, 9 questions | The only part of Commercial Leases that needs new engineering. Done first, it unblocks the whole 70-question category for any model. It does not depend on ARGUS chunks 1 to 3 |
 | 2 (done 2026-11-15) | `plan-reading` chunk 1: viewer extensions, site plan and section sheets, 19 questions | Every later plan-reading chunk builds on these viewer features |
 | 3 (done 2026-11-15) | `plan-reading` chunk 2: roof plan, elevation and ceiling plan sheets, 18 questions | New drawing generators |
-| 4 | `plan-reading` chunk 3: retail, office and mixed-use podium plan sets, 12 questions | The largest drawing-generation job in the app |
+| 4 (done 2026-11-15) | `plan-reading` chunk 3: retail, office and mixed-use podium plan sets, 12 questions | The largest drawing-generation job in the app |
 | 5 | `plan-reading` chunk 4: takeoff attachment for grid questions, 18 questions | Touches the grid types additively; the existing grid tests must pass untouched |
 | 6 | `plan-reading` chunk 5: capstone and accessibility pass, 1 question | Finishes the category |
 
@@ -186,3 +186,7 @@ The owner asked (2026-11-14) for the hardest work to be done first, while the Fa
 | 27 | `construction` chunk 1 (22) | Opus 5.5 medium |
 
 If Fable time runs short, protect steps 1 to 5 in that order: they are the ones a weaker model is most likely to get wrong. Phases B and C can go in any order; categories do not depend on each other.
+
+## Hints are shown exactly as written
+
+Question screens do not fill in `{placeholders}` in hints, so a hint must not contain one (a test enforces this). Put numbers that change with the inputs in the explanation instead, or describe the step in words.

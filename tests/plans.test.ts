@@ -303,3 +303,145 @@ describe('mf-double-loaded: facts agree with what is drawn', () => {
     });
   }
 });
+
+type Rect = { t: 'rect'; x: number; y: number; w: number; h: number };
+type Line = { t: 'line'; x1: number; y1: number; x2: number; y2: number };
+const sheetOf = (set: PlanSet, id: string) => set.sheets.find((s) => s.id === id)!;
+const byRole = (set: PlanSet, sheet: string, role: string) => sheetOf(set, sheet).elements.filter((e) => e.role === role);
+const dimOf = (set: PlanSet, sheet: string, id: string) => {
+  const d = sheetOf(set, sheet).elements.find((e) => e.id === id)!.marks[0].shape as Line;
+  return Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
+};
+
+describe('retail-strip: facts agree with what is drawn', () => {
+  for (const params of paramSets('retail-strip')) {
+    it(JSON.stringify(params), () => {
+      const set = buildPlanSet('retail-strip', params);
+      const f = set.facts;
+      const shops = byRole(set, 'A-101', 'retail-bay');
+      expect(shops.length).toBe(f.tenant_count);
+      expect(byRole(set, 'A-101', 'storefront').length).toBe(f.tenant_count);
+      // every shop has a pair of entry doors on the street and a rear door on the service corridor
+      const doors = byRole(set, 'A-101', 'door').map((d) => d.id);
+      for (const shop of shops) {
+        const num = shop.id.slice(6);
+        expect(doors).toContain(`door-front-${num}-a`);
+        expect(doors).toContain(`door-front-${num}-b`);
+        expect(doors).toContain(`door-rear-${num}`);
+      }
+      expect(areaOf(set, 'A-101', ['retail-bay'])).toBeCloseTo(f.leasable_sf, 6);
+      expect(f.leasable_sf + f.service_sf).toBeCloseTo(f.gross_sf, 6);
+      expect(f.gross_sf).toBe(f.building_length * f.building_depth);
+      expect(shops[0].area).toBe(f.corner_sf);
+      expect(f.corner_sf).toBe(2 * f.inline_sf);
+      for (const shop of shops.slice(1)) expect(shop.area).toBe(f.inline_sf);
+      // frontages add up to the building, and the corner tenant's is two bays
+      const frontages = shops.map((shop) => dimOf(set, 'A-101', `dim-frontage-${shop.id.slice(6)}`));
+      expect(frontages.reduce((a, b) => a + b, 0)).toBeCloseTo(f.frontage, 6);
+      expect(frontages[0]).toBe(f.corner_frontage);
+      expect(dimOf(set, 'A-101', 'dim-length')).toBe(f.building_length);
+      expect(dimOf(set, 'A-101', 'dim-shop-depth')).toBe(f.shop_depth);
+      expect(dimOf(set, 'A-101', 'dim-service') + dimOf(set, 'A-101', 'dim-shop-depth')).toBe(dimOf(set, 'A-101', 'dim-depth'));
+      expect(byRole(set, 'A-101', 'column').length).toBe(2 * (f.bays + 1));
+      expect(byRole(set, 'A-101', 'loading').length).toBe(1);
+      expect(f.depth_to_frontage).toBeCloseTo(f.shop_depth / f.bay_width, 9);
+    });
+  }
+});
+
+describe('office-floor: facts agree with what is drawn', () => {
+  for (const params of paramSets('office-floor')) {
+    it(JSON.stringify(params), () => {
+      const set = buildPlanSet('office-floor', params);
+      const f = set.facts;
+      const suites = byRole(set, 'A-104', 'suite');
+      expect(suites.length).toBe(f.suite_count);
+      expect(areaOf(set, 'A-104', ['suite'])).toBeCloseTo(f.usable_sf, 6);
+      // suites, the ring corridor and the core tile the whole floor plate
+      expect(areaOf(set, 'A-104', ['suite', 'corridor', 'core'])).toBeCloseTo(f.plate_sf, 6);
+      expect(f.plate_sf).toBe(f.plate_length * f.plate_depth);
+      expect(f.plate_depth).toBe(2 * f.lease_depth + f.core_depth);
+      // vertical penetrations, measured from the drawn stairs, elevators and shaft
+      const drawn = [...byRole(set, 'A-104', 'stair'), ...byRole(set, 'A-104', 'elevator'), ...byRole(set, 'A-104', 'mechanical')].reduce((n, e) => {
+        const r = e.marks[0].shape as Rect;
+        return n + r.w * r.h;
+      }, 0);
+      expect(drawn).toBeCloseTo(f.penetration_sf, 6);
+      expect(f.rentable_sf).toBeCloseTo(f.plate_sf - f.penetration_sf, 6);
+      expect(f.common_sf).toBeCloseTo(f.rentable_sf - f.usable_sf, 6);
+      expect(f.load_factor).toBeCloseTo(f.rentable_sf / f.usable_sf, 9);
+      expect(f.load_factor).toBeGreaterThan(1.05);
+      expect(f.load_factor).toBeLessThan(1.3);
+      expect(byRole(set, 'A-104', 'elevator').length).toBe(f.elevator_count);
+      expect(byRole(set, 'A-104', 'stair').length).toBe(2);
+      expect(byRole(set, 'A-104', 'column').length).toBe(4 * (f.bays + 1));
+      // everything in the core fits inside it, with room left for the restrooms
+      const core = sheetOf(set, 'A-104').elements.find((e) => e.id === 'core')!.marks[0].shape as Rect;
+      for (const e of [...byRole(set, 'A-104', 'stair'), ...byRole(set, 'A-104', 'elevator'), ...byRole(set, 'A-104', 'restroom'), ...byRole(set, 'A-104', 'mechanical')]) {
+        const r = e.marks[0].shape as Rect;
+        expect(r.w, `${e.id} has no width`).toBeGreaterThan(5);
+        expect(r.x >= core.x - 1e-9 && r.y >= core.y - 1e-9 && r.x + r.w <= core.x + core.w + 1e-9 && r.y + r.h <= core.y + core.h + 1e-9, `${e.id} is outside the core`).toBe(true);
+      }
+      expect(dimOf(set, 'A-104', 'dim-lease-north')).toBe(f.lease_depth);
+      expect(dimOf(set, 'A-104', 'dim-lease-south')).toBe(f.lease_depth);
+      expect(dimOf(set, 'A-104', 'dim-core-depth')).toBe(f.core_depth);
+      expect(dimOf(set, 'A-104', 'dim-core-length')).toBe(f.core_length);
+      expect(dimOf(set, 'A-104', 'dim-length')).toBe(f.plate_length);
+      expect(dimOf(set, 'A-104', 'dim-bay-1')).toBe(f.column_spacing);
+    });
+  }
+});
+
+describe('podium-mixed-use: facts agree with what is drawn', () => {
+  for (const params of paramSets('podium-mixed-use')) {
+    it(JSON.stringify(params), () => {
+      const set = buildPlanSet('podium-mixed-use', params);
+      const f = set.facts;
+      const stalls = byRole(set, 'A-100', 'stall');
+      expect(stalls.length).toBe(f.standard_stalls);
+      expect(byRole(set, 'A-100', 'accessible-stall').length).toBe(f.accessible_stalls);
+      expect(f.total_stalls).toBe(f.standard_stalls + f.accessible_stalls);
+      expect(f.module_width).toBe(2 * f.stall_depth + f.aisle_width);
+      expect(f.garage_width).toBe(f.modules * f.module_width);
+      expect(f.garage_sf).toBe(f.garage_length * f.garage_width);
+      expect(dimOf(set, 'A-100', 'dim-stall-width')).toBe(f.stall_width);
+      expect(dimOf(set, 'A-100', 'dim-row-length')).toBeCloseTo(f.row_length, 9);
+      expect(dimOf(set, 'A-100', 'dim-garage-length')).toBeCloseTo(f.garage_length, 9);
+      expect(dimOf(set, 'A-100', 'dim-aisle')).toBe(f.aisle_width);
+      expect(dimOf(set, 'A-100', 'dim-module')).toBe(f.module_width);
+      // no two stalls (standard or accessible) overlap, and none sits in a drive aisle, the ramp or a room
+      const boxes = [...stalls, ...byRole(set, 'A-100', 'accessible-stall')].map((e) => e.hit as Rect);
+      const blocked = [...byRole(set, 'A-100', 'drive-aisle'), ...byRole(set, 'A-100', 'ramp'), ...byRole(set, 'A-100', 'lobby'), ...byRole(set, 'A-100', 'storage')].map((e) => e.hit as Rect);
+      const apart = (a: Rect, b: Rect) => a.x + a.w <= b.x + 1e-9 || b.x + b.w <= a.x + 1e-9 || a.y + a.h <= b.y + 1e-9 || b.y + b.h <= a.y + 1e-9;
+      boxes.forEach((a, i) => {
+        expect(a.x >= 0 && a.y >= 0 && a.x + a.w <= f.garage_length && a.y + a.h <= f.garage_width, 'a stall is outside the garage').toBe(true);
+        boxes.slice(i + 1).forEach((b) => expect(apart(a, b), 'two stalls overlap').toBe(true));
+        blocked.forEach((b) => expect(apart(a, b), 'a stall sits in an aisle or a room').toBe(true));
+      });
+      expect(f.sf_per_stall).toBeGreaterThan(250);
+      expect(f.sf_per_stall).toBeLessThan(450);
+
+      // the section: parking below, a tall retail floor, then the apartments, with one marker per level
+      const section = sheetOf(set, 'A-301');
+      const bandOf = (id: string) => section.elements.find((e) => e.id === id)!.marks[0].shape as Rect;
+      expect(bandOf('use-parking').h).toBe(f.parking_height);
+      expect(bandOf('use-parking').y).toBe(0);
+      expect(bandOf('use-retail').h).toBe(f.retail_height);
+      expect(bandOf('use-retail').y + bandOf('use-retail').h).toBe(0);
+      const flats = byRole(set, 'A-301', 'use-residential');
+      expect(flats.length).toBe(f.res_storeys);
+      for (const flat of flats) expect((flat.marks[0].shape as Rect).h).toBe(f.res_height);
+      expect((flats[0].marks[0].shape as Rect).w).toBe(f.res_bar_depth);
+      expect(f.res_bar_depth).toBeLessThanOrEqual(f.garage_width);
+      expect(bandOf('use-retail').w).toBe(f.garage_width);
+      expect(byRole(set, 'A-301', 'level-marker').length).toBe(f.res_storeys + 3);
+      expect(f.storeys_above_grade).toBe(f.res_storeys + 1);
+      expect(f.building_height).toBe(f.retail_height + f.res_storeys * f.res_height);
+      expect(dimOf(set, 'A-301', 'dim-height')).toBe(f.building_height);
+      expect(dimOf(set, 'A-301', 'dim-retail-height')).toBe(f.retail_height);
+      expect(dimOf(set, 'A-301', 'dim-parking-height')).toBe(f.parking_height);
+      expect(byRole(set, 'A-301', 'podium').length).toBe(1);
+      expect(set.sheets.map((s) => s.id)).toEqual(['G-001', 'A-100', 'A-301']);
+    });
+  }
+});

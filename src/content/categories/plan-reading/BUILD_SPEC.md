@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Tier | Large (tier id `BIG`): 70 questions, two difficulty levels (1 Foundations, 2 Applied), one capstone case (level 3) |
-| Status | `in-progress`: 2 seeds, Chunk 1 (viewer extensions, site plan and section, 19 questions) and Chunk 2 (roof plan, elevation and ceiling plan sheets, 18 questions) built on 2026-11-15. 39 of 70 |
+| Status | `in-progress`: 2 seeds and Chunks 1 to 3 built (2026-11-15): viewer extensions, four plan sets, 49 questions. 51 of 70 |
 | Build with | **Fable 5.2, high effort** (it extends a drawing generator and an interactive component) |
 | Legal verification | Not required (zoning numbers are always GIVEN, never taught or asserted) |
 | Read first | `CLAUDE.md`, `docs/BUILDING_CATEGORIES.md`, this file, `items.ts` in this folder, then `src/plans/*` and `src/components/plan/PlanViewer.tsx` |
@@ -401,6 +401,10 @@ Label all of these illustrative. They are drawing parameters, not standards.
 - `src/plans/model.ts`: `PlanSet → PlanSheet[] → PlanElement[] → Mark[]`. Geometry is in real feet, y down. An element has `id`, `role`, `name` (shown only after grading), `marks`, optional `hit` (the hotspot), optional `link` (sheet to jump to), optional `area`. A sheet has a `scale` (`label`, `ftPerInch`), `bounds` and `snaps`. A set has `facts`: named numbers that answer keys are written against. Shapes: `rect`, `line`, `poly`, `circle`, `arc`, `cloud` (revision cloud), `text`. Pens: `wall`, `medium`, `thin`, `dash`, `center`, `phantom` (property line), `none`. Fills: `none`, `paper`, `solid`, `tint`, `hatch`.
 - `src/plans/draw.ts`: drafting helpers (door, cased opening, window, stair, elevator, grid bubble, dimension string, north arrow, graphic scale, split bubble, drawing title, title block, border, section marker head, revision delta).
 - `src/plans/mfDoubleLoaded.ts`: plan set `mf-double-loaded` with eight sheets, numbered by the discipline-letter and sheet-type convention: **G-001** cover and index, **C-101** site plan (1" = 20': property lines, setback lines, easement, footprint, street), **A-102** level 2 floor plan (1/8": with a section cut and its two markers, an elevation marker, a revision cloud, delta and revision list), **A-103** roof plan (parapet, roof drains with slope arrows, rooftop units, hatch, elevator overrun), **A-201** south elevation (windows per apartment per floor, entrance, level markers, parapet), **A-301** building section (floor slabs, level markers with elevations, floor-to-floor dimensions), **A-401** enlarged unit plan (1/4"), **A-402** enlarged unit reflected ceiling plan (light fixtures, exhaust fan, smoke detectors, ceiling height tags, hatched lowered ceilings). Ten parameters with limits. The list of element roles is in the comment at the top of the file, and every fact is listed in `build()`.
+- `src/plans/retailStrip.ts`: plan set `retail-strip`: G-001 and **A-101** ground floor of a row of shops (a two-bay corner suite and inline suites, storefronts with paired entry doors, rear doors onto a service corridor, an unlabelled loading bay open to the alley, trash and electrical rooms, columns, frontage dimensions). Facts: leasable and gross area, frontage, corner and inline shop areas, depth-to-frontage.
+- `src/plans/officeFloor.ts`: plan set `office-floor`: G-001 and **A-104** multi-tenant office floor (column grid, central core with two stairs, four elevators, lobby, restrooms and shaft, a 5-ft ring corridor, four suites, lease-depth dimensions). Facts: plate, core, usable, rentable (plate less stairs, elevators and shaft), load factor.
+- `src/plans/podium.ts`: plan set `podium-mixed-use`: G-001, **A-100** parking level (one or two 60-ft modules, ramp, cross aisle, accessible stalls with hatched access aisles at the elevator end, columns, cores) and **A-301** section (parking below grade, a tall retail floor, the podium slab, apartment floors set back where the garage is wider). Facts: stall counts, garage area, SF per stall, storeys and heights.
+- `coverSheet(index, subtitle, project)` in `mfDoubleLoaded.ts` is shared by every set.
 - `src/plans/sets.ts`: `PLAN_SETS`, `buildPlanSet(id, overrides)` with parameter limits.
 - `src/components/plan/PlanViewer.tsx`: SVG rendering; pan (drag, arrow keys), zoom (buttons, pinch, Ctrl+scroll, + and -), fit; sheet tabs; links jump between sheets; Measure tool with snapping in `real`, `paper` or `area` mode (area: click each corner, then the first corner again to close; readout in SF); pick mode for one or several elements; reveal state after grading.
 - Item type `plan` in `schema.ts` with four task kinds:
@@ -419,7 +423,7 @@ Label all of these illustrative. They are drawing parameters, not standards.
 - Every number a question could ask for is a `fact`, named in lowercase_with_underscores (no digits), computed from the parameters, and cross-checked in `tests/plans.test.ts` against the drawn geometry (sum of room areas = gross area; counts of elements by role = count facts; dimension strings as long as the facts they state).
 - Every drawn thing a question could ask about is its own element with a stable `role`. Add roles as needed (for example `elevation-marker, stall, accessible-stall, drive-aisle, ramp, column, storefront, loading, retail-bay, door-tag, window-tag`) and list them in the comment at the top of the generator.
 - An element whose outline is a line (a property line, a setback line) needs a thin band as its `hit`, one element per segment, so that clicking inside the lot does not count as clicking the line.
-- Labels on the drawing must not give away locate answers that the question is testing (the stairs are marked UP/DN, not "STAIR"; setback lines are dimensioned but not labelled).
+- Nothing visible on a sheet may answer a question asked about that sheet: not a room label, not a general note, not the project name, not the cover subtitle (the stairs are marked UP/DN, not "STAIR"; setback lines are dimensioned but not labelled; the loading bay is unlabelled and the note only says where the alley is; the podium slab is labelled "CONCRETE SLAB" and the project is not called a podium). Element `name`s are fine: they stay hidden until the question is graded. Before committing a question, list the text on its sheets and read it with the question in mind.
 - Parameters have `limits`; every question's `variants` must lie inside them (enforced at load). Type variant lists as `Record<string, number>[]`.
 - The test "every mark is on the paper" runs at each parameter's minimum and maximum: lay out sheet furniture (title, scale bar, north arrow) so it clears the title block at both extremes.
 
@@ -429,12 +433,14 @@ Built in Chunk 1: V1 `navigate`; V2 the `area` ruler; V3 multi-select `locate` (
 
 Built in Chunk 2: the elevation marker and the roof plan, elevation and reflected ceiling plan sheets. The area ruler and the paper ruler each have questions that depend on them.
 
+Built in Chunk 3: plan sets `retail-strip`, `office-floor` and `podium-mixed-use` (see 13.1).
+
 Still to build:
 
-- **Plan sets** `retail-strip`, `office-floor`, `mixed-use-podium` with a parking level numbered in the A series, e.g. A-100 (Chunk 3).
-- **Spot-the-problem parameters**: for example `stairs: 1` to remove the second exit, with an element of role `egress-problem` at the dead end (Chunk 3 or 4).
+- **Spot-the-problem parameters** for Chunk 4: for example `stairs: 1` on the apartment set to remove the second exit (with an element of role `egress-problem` at the dead end), or a `podium-mixed-use` variant whose stall count falls short of a parking requirement given in the prompt.
+- **Takeoff attachment** for grid questions (13.4).
 
-Type mix still to come after Chunk 2 (31 questions): about 6 `plan`, 5 flashcards, 3 mcq, 2 numeric, 1 order, 1 explain, 6 grids, 2 error hunts, 2 document reviews, 2 judgment and the timed capstone.
+Type mix still to come after Chunk 3 (19 questions): about 0 to 2 `plan` (spot-the-problem), 2 flashcards, 1 mcq, 2 numeric, 1 order, 1 explain, 6 grids, 2 error hunts, 2 document reviews, 1 judgment and the timed capstone.
 
 ### 13.4 Takeoff attachment for grid questions (Chunk 4)
 
@@ -474,7 +480,7 @@ Implementation notes: resolve the variant with the same seed as the viewer; buil
 | Chunk 0: seeds (done) | 2 | plan-reading-symbols-locate-stair, plan-reading-program-measure-efficiency, and the minimal viewer with plan set mf-double-loaded |
 | Chunk 1 (done 2026-11-15) | 19 | Viewer extensions V1 to V4 (section 13.3), sheets C-101 site plan and A-301 building section; plan-reading-set (8) and plan-reading-symbols (11 more) |
 | Chunk 2 (done 2026-11-15) | 18 | Sheets A-103 roof plan, A-201 south elevation and A-402 unit reflected ceiling plan, with an elevation marker on the floor plan; plan-reading-types (9) and plan-reading-scale (9) |
-| Chunk 3 | 12 | New plan sets: retail-strip, office-floor, mixed-use-podium with a parking level; plan-reading-buildings (12) |
+| Chunk 3 (done 2026-11-15) | 12 | New plan sets retail-strip, office-floor and podium-mixed-use (parking level and section); plan-reading-buildings (12) |
 | Chunk 4 | 18 | Takeoff attachment for grid questions (section 13.4); plan-reading-program (10 more) and plan-reading-bridge (8) |
 | Chunk 5 | 1 | Capstone plan-reading-case; accessibility pass; set status to built |
 | **Total** | **70** | |

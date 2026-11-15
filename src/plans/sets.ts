@@ -7,9 +7,12 @@
  * geometry at the limits of every parameter.
  */
 import { MF_DOUBLE_LOADED } from './mfDoubleLoaded';
+import { OFFICE_FLOOR } from './officeFloor';
+import { PODIUM_MIXED_USE } from './podium';
+import { RETAIL_STRIP } from './retailStrip';
 import type { PlanSet, PlanSetDef } from './model';
 
-export const PLAN_SETS: PlanSetDef[] = [MF_DOUBLE_LOADED];
+export const PLAN_SETS: PlanSetDef[] = [MF_DOUBLE_LOADED, RETAIL_STRIP, OFFICE_FLOOR, PODIUM_MIXED_USE];
 
 export function planSetDef(id: string): PlanSetDef | undefined {
   return PLAN_SETS.find((s) => s.id === id);

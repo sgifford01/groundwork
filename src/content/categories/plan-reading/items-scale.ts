@@ -15,7 +15,7 @@ export const ITEMS = categoryItems('plan-reading', [
     prompt: 'A floor plan is drawn at 1/{den}" = 1\'-0". A wall measures {paper} inches on the paper. How long is the real wall?',
     tags: ['architectural scale', 'scale conversion'],
     estMinutes: 1.5,
-    hints: ['The scale says how much paper stands for one foot.', 'If 1/{den} of an inch is one foot, a whole inch is {den} feet.', 'Real feet = inches on paper x {den}.'],
+    hints: ['The scale says how much paper stands for one foot.', 'At 1/8" = 1\'-0", a whole inch of paper is 8 feet. At 1/4" = 1\'-0", it is 4 feet.', 'Real feet = inches on paper x the number of feet in one inch.'],
     vars: [
       { name: 'den', choices: [8, 4] },
       { name: 'paper', min: 1.5, max: 9, step: 0.25, format: 'num2' },

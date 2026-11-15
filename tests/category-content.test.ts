@@ -131,6 +131,12 @@ describe('category content: schema and bookkeeping', () => {
     }
   });
 
+  it('hints contain no {placeholders}: every question screen shows hints exactly as written', () => {
+    for (const item of CATEGORY_ITEMS) {
+      for (const h of item.hints) expect(/[{}]/.test(h), `${item.id}: hint "${h}"`).toBe(false);
+    }
+  });
+
   it('titles are not duplicated within a category', () => {
     const seen = new Set<string>();
     for (const item of CATEGORY_ITEMS) {
