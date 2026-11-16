@@ -170,7 +170,7 @@ The owner asked (2026-11-14) for the hardest work to be done first, while the Fa
 
 | Step | Session | Why it is here |
 |---|---|---|
-| 7 | `entitlements` chunk 1: verification log, zoning, approvals, CEQA, 19 questions | Every rule must be checked against official sources; careful reading matters more than speed |
+| 7 (done 2026-11-15) | `entitlements` chunk 1: verification log, zoning, approvals, CEQA, 19 questions | Every rule must be checked against official sources; careful reading matters more than speed. The spec's section 11 now says what worked, and that the City of San Diego's PDFs need a reader before step 8 |
 | 8 | `entitlements` chunk 2: state housing laws, local rules, risk, mini-case, 19 questions | Same |
 | 9 | `argus` chunk 1: rent rolls and base rent, 16 questions | Content only, once step 1 is done |
 | 10 | `argus` chunk 2: recoveries and concessions, 18 questions | |

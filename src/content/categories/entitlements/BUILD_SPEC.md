@@ -4,6 +4,7 @@
 |---|---|
 | Tier | MEDIUM: 40 questions, two difficulty levels (1 Foundations, 2 Applied), one mini-case (level 3) |
 | Status when this spec was written | `planned`, 2 seed questions built (both `noLegalClaim`) |
+| Status now | `in-progress`: Chunk 1 built 2026-11-15 (21 of 40). `VERIFICATION_LOG.md` lists 15 rules checked at primary sources; 10 of the 19 new questions rely on them, the other 9 are hypothetical arithmetic or general concepts |
 | Build with | **Opus 5.5, high effort**, with web access to official sources |
 | Legal verification | **REQUIRED** (`needsLegalVerification: true`) |
 | Read first | `CLAUDE.md`, `docs/BUILDING_CATEGORIES.md`, this file, `items.ts` in this folder |
@@ -347,6 +348,8 @@ Used for hypothetical standards and for risk arithmetic. Label them hypothetical
 5. If sources conflict, the page will not load, or the rule is being amended, do not write the question. Note it in the log as unverified.
 6. Re-verify everything already in the log at the start of Chunk 2.
 
+**Learned in Chunk 1 (2026-11-15).** The statute pages on leginfo.legislature.ca.gov read well as text in the browser pane, and each shows the last amending statute. The CEQA Guidelines are easiest to reach on govt.westlaw.com through its "Search for a Specific Regulatory Section" form (Title 14, the section number). The City of San Diego publishes its Municipal Code as PDF files (docs.sandiego.gov/municode/...): the browser pane downloads them instead of showing them, and their tables could not be extracted as text with the tools available, so the optional "real San Diego zone" question was skipped. **Before Chunk 2, arrange a way to read those PDFs** (for example, install poppler so the files can be read page by page), because the San Diego items in `entitlements-local` must be verified against City sources.
+
 **What to look up (pointers, not facts; section numbers are from memory and must themselves be confirmed):**
 
 | Topic | What must be verified | Where to look |
@@ -400,8 +403,8 @@ None. This category uses the existing types, including `docreview` and `judgment
 | Chunk | Items | Scope |
 |---|---:|---|
 | Chunk 0: seeds (done) | 2 | entitlements-zoning-grid-capacity, entitlements-risk-numeric-expected-carry (both noLegalClaim) |
-| Chunk 1 | 19 | Verification log first (section 11); then entitlements-zoning (8 more), entitlements-approvals (6), entitlements-ceqa (5) |
-| Chunk 2 | 19 | Verification log update; entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built |
+| Chunk 1 (done 2026-11-15) | 19 | VERIFICATION_LOG.md with 15 rules checked at primary sources; entitlements-zoning (8 more, all hypothetical), entitlements-approvals (6: 5 verified, 1 general), entitlements-ceqa (5, all verified) |
+| Chunk 2 | 19 | Re-verify the log; first find a way to read the City of San Diego PDFs (section 11); entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built |
 | **Total** | **40** | |
 <!-- CHUNKS:END -->
 

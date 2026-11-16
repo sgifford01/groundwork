@@ -192,7 +192,7 @@ export const CATEGORIES: Category[] = [
     slug: 'entitlements',
     title: 'Entitlements & Zoning',
     tier: 'MEDIUM',
-    status: 'planned',
+    status: 'in-progress',
     summary:
       'What a site is allowed to become and how long it takes to get permission, with a California and City of San Diego focus.',
     bullets: [

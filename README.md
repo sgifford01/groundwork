@@ -208,7 +208,7 @@ On a small screen the Practice page leaves out spreadsheet tasks and shortcut dr
 | **Excel & Pro Forma Modeling** (core) | 204 questions | Ready |
 | Commercial Leases & ARGUS | about 70 | In progress (11 questions, including the lease simulator) |
 | Plan Reading & Building Program | 70 questions | Ready (with a 35-minute case study at the end) |
-| Entitlements & Zoning | about 40 | Coming soon (2 samples) |
+| Entitlements & Zoning | about 40 | In progress (21 of 40: zoning, approvals and CEQA; every legal point dated and linked to its source) |
 | Market Analysis | about 70 | Coming soon (2 samples) |
 | Acquisitions & Closing | about 70 | Coming soon (2 samples) |
 | Debt & Capital Markets | about 40 | Coming soon (2 samples) |

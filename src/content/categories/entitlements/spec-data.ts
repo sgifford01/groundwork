@@ -202,7 +202,17 @@ export const SPEC: SpecData = {
   },
   chunks: [
     { title: 'Chunk 0: seeds (done)', items: 2, scope: 'entitlements-zoning-grid-capacity, entitlements-risk-numeric-expected-carry (both noLegalClaim)' },
-    { title: 'Chunk 1', items: 19, scope: 'Verification log first (section 11); then entitlements-zoning (8 more), entitlements-approvals (6), entitlements-ceqa (5)' },
-    { title: 'Chunk 2', items: 19, scope: 'Verification log update; entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built' },
+    {
+      title: 'Chunk 1 (done 2026-11-15)',
+      items: 19,
+      scope:
+        'VERIFICATION_LOG.md with 15 rules checked at primary sources; entitlements-zoning (8 more, all hypothetical), entitlements-approvals (6: 5 verified, 1 general), entitlements-ceqa (5, all verified)',
+    },
+    {
+      title: 'Chunk 2',
+      items: 19,
+      scope:
+        'Re-verify the log; first find a way to read the City of San Diego PDFs (section 11); entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built',
+    },
   ],
 };
