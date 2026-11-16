@@ -41,7 +41,7 @@ export interface Category {
   bullets: string[];
   /** Landing page: a short paragraph on what this is and why it matters. */
   description: string;
-  /** Landing page: measurable objectives. */
+  /** Measurable objectives, for builders (the category's BUILD_SPEC states them in full). Not shown in the app: the popup's bullets cover them. */
   objectives: string[];
   /** Question count of the full build. (For the core category the built count is used instead.) */
   targetItems: number;

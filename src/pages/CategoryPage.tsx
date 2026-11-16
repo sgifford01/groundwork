@@ -1,13 +1,14 @@
 /**
  * A category's landing page, built entirely from the registry: what it is,
- * what you will learn, its subtopics, how much is built and how well you know
- * it, and the next question to work on. The core course shows its full
- * dashboard here instead of a subtopic list.
+ * the next question to work on, how much is built and how well you know it,
+ * and its subtopics. (What it covers and its size are in the home screen's
+ * popup, not repeated here.) The core course shows its full dashboard here
+ * instead of a subtopic list.
  */
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Bar, CategoryIcon, StatusChip, SubtopicList } from '../components/CategoryBits';
-import { categoryBySlug, CORE_CATEGORY, TIER_LABELS, TIER_SCOPE, type Category } from '../content/categories/registry';
+import { categoryBySlug, CORE_CATEGORY, TIER_LABELS, type Category } from '../content/categories/registry';
 import { ALL_TYPE_LABELS } from '../content/schema';
 import { categoryStats, isSolved, learningOrder, topicLabel } from '../learn/category';
 import type { Cards } from '../learn/mastery';
@@ -164,40 +165,7 @@ export function CategoryPage() {
             </div>
           </div>
 
-          <div className="cols-2">
-            <div className="card">
-              <h2>What you will be able to do</h2>
-              <ul className="objectives">
-                {cat.objectives.map((o) => (
-                  <li key={o}>{o}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="card">
-              <h2>About this category</h2>
-              <dl className="facts">
-                <dt>Size</dt>
-                <dd>
-                  {TIER_LABELS[cat.tier]}: {TIER_SCOPE[cat.tier].toLowerCase()}
-                </dd>
-                <dt>Covers</dt>
-                <dd>
-                  <ul className="objectives">
-                    {cat.bullets.map((b) => (
-                      <li key={b}>{b}</li>
-                    ))}
-                  </ul>
-                </dd>
-                {cat.needsLegalVerification && (
-                  <>
-                    <dt>Sources</dt>
-                    <dd>Laws and fees change. Every rule in this category is checked against an official source when it is written, and shows the date it was checked.</dd>
-                  </>
-                )}
-              </dl>
-            </div>
-          </div>
-
+          {/* What the category covers, its size and its sources are in the popup that opens from the home screen. */}
           <div>
             <h2 className="section-title">Subtopics</h2>
             <SubtopicList cat={cat} cards={cards} now={now} />

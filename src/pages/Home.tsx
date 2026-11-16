@@ -81,6 +81,12 @@ function CategoryOverlay({ cat, stats, onClose }: { cat: Category; stats: Catego
               </dd>
             </>
           )}
+          {cat.needsLegalVerification && (
+            <>
+              <dt>Sources</dt>
+              <dd>Laws change, so every legal rule is checked against an official source and dated.</dd>
+            </>
+          )}
           {stats.seen > 0 && (
             <>
               <dt>Your mastery</dt>
