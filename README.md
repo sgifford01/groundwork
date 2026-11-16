@@ -231,6 +231,8 @@ Five kinds of question exist only in the new categories:
 
 Every category keeps its own review queue and its own mastery bar. Your progress in the Excel & Pro Forma course is untouched by any of this.
 
+Each category page (the Excel course included) has a **Next up** box: it shows how many questions you have solved and opens the first one you have not, in the order the category is meant to be learned (topic by topic, and within a topic, cards and quick questions before sheet builds). After you answer any question, **Next question →** sits to the right of the try-again button and follows the same order. The try-again button says "with new numbers" (or "with a new drawing") only when the numbers really change.
+
 ### Building out a category
 
 Each category has a build spec: `src/content/categories/<name>/BUILD_SPEC.md`. At the bottom of each spec is a **BUILD PROMPT**. To build a category, open this folder in Claude Code, start a new session with the model the prompt names, and paste the prompt (it builds one chunk of about 15 to 25 questions per session). `docs/BUILDING_CATEGORIES.md` is the instruction manual those sessions follow.

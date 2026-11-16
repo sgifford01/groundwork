@@ -15,7 +15,21 @@ import { sampleVars } from '../src/engine/variables';
 import { evalFormula } from '../src/engine/workbook';
 import { gradeDocReview, gradeMeasure, planFor } from '../src/grading/category';
 import { numericAnswer } from '../src/grading/simple';
-import { ALL_TOPICS, categoriesWithDue, categoryStats, dueEverywhere, statusRows, topicLabel } from '../src/learn/category';
+import {
+  ALL_TOPICS,
+  categoriesWithDue,
+  categoryStats,
+  dueEverywhere,
+  isSolved,
+  learningOrder,
+  nextInCategory,
+  nextUnsolved,
+  retryKind,
+  retryLabel,
+  statusRows,
+  topicLabel,
+  TYPE_RANK,
+} from '../src/learn/category';
 import type { Cards } from '../src/learn/mastery';
 import { buildSession, dueItems, newItems } from '../src/learn/session';
 import { newCard, type CardState } from '../src/learn/sm2';
@@ -424,5 +438,68 @@ describe('progress and sessions per category', () => {
     }
     expect(rows[0].built).toBe(rows[0].target);
     expect(evalFormula('=1+1')).toBe(2);
+  });
+});
+
+describe('learning order, "next unsolved" and the try-again button', () => {
+  it('every category is ordered by topic as the course lists them, then easier question types first', () => {
+    for (const cat of CATEGORIES) {
+      const order = learningOrder(cat.slug);
+      const items = itemsOfCategory(cat.slug);
+      expect(order.length, cat.slug).toBe(items.length);
+      expect(new Set(order.map((i) => i.id)).size, cat.slug).toBe(items.length);
+      const topicIds = cat.slug === CORE_CATEGORY ? TOPICS.map((t) => t.id) : cat.subtopics.map((t) => t.id);
+      for (let k = 1; k < order.length; k++) {
+        const a = order[k - 1];
+        const b = order[k];
+        const ta = topicIds.indexOf(a.topic);
+        const tb = topicIds.indexOf(b.topic);
+        expect(ta, `${a.id} is in an unlisted topic`).toBeGreaterThanOrEqual(0);
+        expect(ta <= tb, `${cat.slug}: ${a.id} comes before ${b.id} but its topic is later`).toBe(true);
+        if (ta === tb) expect(TYPE_RANK[a.type] <= TYPE_RANK[b.type], `${a.id} (${a.type}) before ${b.id} (${b.type})`).toBe(true);
+      }
+    }
+  });
+
+  it('a question is solved once answered fully right, or once its mastery reaches 80%', () => {
+    expect(isSolved(undefined)).toBe(false);
+    expect(isSolved(newCard())).toBe(false);
+    expect(isSolved({ ...newCard(), seen: 1, correct: 1, mastery: 0.4 })).toBe(true);
+    expect(isSolved({ ...newCard(), seen: 2, correct: 0, mastery: 0.8 })).toBe(true);
+    expect(isSolved({ ...newCard(), seen: 2, correct: 0, mastery: 0.75 })).toBe(false);
+  });
+
+  it('"next unsolved" walks the learning order, skipping solved questions', () => {
+    const order = learningOrder('plan-reading');
+    expect(nextUnsolved('plan-reading', {})?.id).toBe(order[0].id);
+    const cards: Cards = {};
+    cards[order[0].id] = { ...newCard(), seen: 1, correct: 1, mastery: 1 };
+    cards[order[1].id] = { ...newCard(), seen: 1, correct: 0, mastery: 0.3 }; // tried, not solved
+    expect(nextUnsolved('plan-reading', cards)?.id).toBe(order[1].id);
+    const allSolved: Cards = Object.fromEntries(order.map((i) => [i.id, { ...newCard(), seen: 1, correct: 1, mastery: 1 }]));
+    expect(nextUnsolved('plan-reading', allSolved)).toBeUndefined();
+  });
+
+  it('"next question" follows the same order and stops at the last one', () => {
+    const order = learningOrder('entitlements');
+    expect(nextInCategory(order[0])?.id).toBe(order[1].id);
+    expect(nextInCategory(order[order.length - 1])).toBeUndefined();
+    const core = learningOrder(CORE_CATEGORY);
+    expect(nextInCategory(core[0])?.category).toBe(CORE_CATEGORY);
+  });
+
+  it('the try-again button promises new numbers only when the numbers really change', () => {
+    for (const item of EVERY_ITEM) {
+      const kind = retryKind(item);
+      const label = retryLabel(item);
+      if (['grid', 'formula', 'errorhunt', 'case', 'timed', 'order', 'explain', 'shortcut'].includes(item.type)) expect(kind, item.id).toBe('same');
+      if (kind === 'same') expect(label, item.id).not.toMatch(/new numbers|new drawing/);
+      if (kind === 'numbers') expect(label, item.id).toBe('Try again with new numbers');
+      if (kind === 'drawing') expect(label, item.id).toBe('Try again with a new drawing');
+      if (item.type === 'plan') expect(kind, item.id).toBe(item.plan.variants.length > 1 ? 'drawing' : 'same');
+    }
+    expect(retryLabel(itemById('entitlements-zoning-flashcard-conditional-use')!)).toBe('See the card again');
+    expect(retryLabel(itemById('entitlements-zoning-numeric-density-units')!)).toBe('Try again with new numbers');
+    expect(retryLabel(itemById('entitlements-zoning-grid-setback-envelope')!)).toBe('Try again');
   });
 });

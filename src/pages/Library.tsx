@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ItemRunner } from '../components/ItemRunner';
 import { SubtopicList } from '../components/CategoryBits';
-import { ALL_ITEMS, EVERY_ITEM, itemById, itemsOfCategory } from '../content';
+import { ALL_ITEMS, itemById, itemsOfCategory } from '../content';
 import { CATEGORIES, categoryBySlug, CORE_CATEGORY } from '../content/categories/registry';
 import { ALL_TYPE_LABELS, type Item, type ItemType } from '../content/schema';
 import { LEVELS, TOPICS } from '../content/topics';
 import { newSeed } from '../engine/rng';
+import { nextInCategory, retryLabel } from '../learn/category';
 import { isLevelUnlocked, levelHasContent, levelMastery, topicMastery, UNLOCK_AT } from '../learn/mastery';
 import { describeInterval, type CardState } from '../learn/sm2';
 import { useProgress } from '../store/progress';
@@ -73,7 +74,9 @@ export function Library() {
           <div>
             <h1>Library</h1>
             <p>
-              {itemsOfCategory(other.slug).length} of about {other.targetItems} questions built in {other.title}.{' '}
+              {other.status === 'built'
+                ? `${itemsOfCategory(other.slug).length} questions in ${other.title}, listed in the order to learn them.`
+                : `${itemsOfCategory(other.slug).length} of about ${other.targetItems} questions built in ${other.title}, listed in the order to learn them.`}{' '}
               <Link to={`/c/${other.slug}`}>Open the category page</Link>
             </p>
           </div>
@@ -171,7 +174,7 @@ export function Library() {
   );
 }
 
-/** One question on its own page, repeatable with fresh numbers. */
+/** One question on its own page. After grading: try it again, or go on to the next question in the category. */
 export function ItemPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -191,9 +194,10 @@ export function ItemPage() {
     );
   }
 
-  const peers = EVERY_ITEM.filter((i) => i.topic === item.topic);
   const isCore = item.category === CORE_CATEGORY;
-  const next = peers[peers.findIndex((i) => i.id === item.id) + 1];
+  const next = nextInCategory(item);
+  const retry = { label: retryLabel(item), onClick: () => setSeed(newSeed()) };
+  const goNext = () => next && navigate(`/item/${next.id}`);
 
   return (
     <div className="page">
@@ -202,8 +206,8 @@ export function ItemPage() {
           ← {isCore ? 'Library' : (categoryBySlug(item.category)?.title ?? 'Category')}
         </Link>
         {next && (
-          <button type="button" className="btn small ghost" onClick={() => navigate(`/item/${next.id}`)}>
-            Next in this topic →
+          <button type="button" className="btn small ghost" onClick={goNext}>
+            Skip to the next question →
           </button>
         )}
       </div>
@@ -212,8 +216,10 @@ export function ItemPage() {
           key={`${item.id}-${seed}`}
           item={item}
           seed={seed}
-          nextLabel={item.type === 'flashcard' ? 'Again' : 'Try again with new numbers'}
-          onNext={() => setSeed(newSeed())}
+          // after grading: the retry button, then (to its right) the next question in the category's learning order
+          nextLabel={next ? 'Next question →' : retry.label}
+          onNext={next ? goNext : retry.onClick}
+          secondary={next ? retry : undefined}
         />
       </div>
     </div>

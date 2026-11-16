@@ -636,6 +636,21 @@ table.plain th.num {
   flex-wrap: wrap;
   padding-top: 4px;
 }
+/* On a phone the try-again and next buttons share one row, next on the right, instead of stacking. */
+@media (max-width: 520px) {
+  .q-foot > .row {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+  .q-foot > .row > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
+    justify-content: center;
+  }
+}
 .confidence {
   display: flex;
   align-items: center;
@@ -1507,6 +1522,30 @@ table.results td:nth-child(4) {
 .tiles.three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+.tiles.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* "Next up": the first unsolved question of a category, with a button straight to it */
+.next-up {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  border-color: var(--accent);
+}
+.next-up-text {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.next-up-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 2px 0 2px;
+}
+.next-up .bar {
+  margin-top: 10px;
+}
 .tile-of {
   font-size: 15px;
   font-weight: 500;
@@ -1844,7 +1883,8 @@ ul.objectives {
 }
 
 @media (max-width: 760px) {
-  .tiles.three {
+  .tiles.three,
+  .tiles.two {
     grid-template-columns: 1fr;
   }
   .cat-head {
@@ -1894,10 +1934,12 @@ ul.objectives {
 .cat-overlay .cat-card-label {
   margin-bottom: 6px;
 }
-/* The buttons stay in view at the bottom of the overlay even when its text has to scroll (small screens). */
+/* The buttons stay in view at the bottom of the overlay even when its text has to scroll (small screens).
+   bottom: -24px matches the negative margin that pulls the bar into the overlay's padding: with bottom: 0
+   the sticky bar stopped 24px short of the edge and covered the last line of text. */
 .cat-overlay-actions {
   position: sticky;
-  bottom: 0;
+  bottom: -24px;
   display: flex;
   justify-content: flex-end;
   gap: 10px;

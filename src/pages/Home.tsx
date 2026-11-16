@@ -19,6 +19,7 @@ import { useProgress } from '../store/progress';
 function CategoryOverlay({ cat, stats, onClose }: { cat: Category; stats: CategoryStats; onClose: () => void }) {
   const openRef = useRef<HTMLAnchorElement>(null);
   const isCore = cat.tier === 'CORE';
+  const isBuilt = cat.status === 'built';
 
   useEffect(() => {
     openRef.current?.focus({ preventScroll: true });
@@ -71,11 +72,15 @@ function CategoryOverlay({ cat, stats, onClose }: { cat: Category; stats: Catego
           <dt>Size</dt>
           <dd>{isCore ? TIER_SCOPE[cat.tier] : `${TIER_LABELS[cat.tier]}: ${TIER_SCOPE[cat.tier].toLowerCase()}`}</dd>
           <dt>Questions</dt>
-          <dd>{isCore ? `${stats.built}, all ready` : `about ${stats.target} when finished (${stats.built} ready to try now)`}</dd>
-          <dt>Status</dt>
-          <dd>
-            <StatusChip cat={cat} />
-          </dd>
+          <dd>{isBuilt ? `${stats.built}, all ready` : `about ${stats.target} when finished (${stats.built} ready to try now)`}</dd>
+          {!isBuilt && (
+            <>
+              <dt>Status</dt>
+              <dd>
+                <StatusChip cat={cat} />
+              </dd>
+            </>
+          )}
           {stats.seen > 0 && (
             <>
               <dt>Your mastery</dt>

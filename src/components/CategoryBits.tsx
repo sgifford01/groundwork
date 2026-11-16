@@ -1,8 +1,8 @@
 /** Small pieces shared by the home screen, the category pages and the library. */
 import { Link } from 'react-router-dom';
-import { itemsOfCategory } from '../content';
 import { CATEGORY_LEVELS, STATUS_LABELS, type Category } from '../content/categories/registry';
 import { ALL_TYPE_LABELS } from '../content/schema';
+import { learningOrder } from '../learn/category';
 import { describeInterval, type CardState } from '../learn/sm2';
 import type { Cards } from '../learn/mastery';
 
@@ -14,7 +14,9 @@ export function CategoryIcon({ path, size = 22 }: { path: string; size?: number 
   );
 }
 
+/** "Coming soon" or "Being built". A finished category shows no status at all: there is nothing left to build. */
 export function StatusChip({ cat }: { cat: Category }) {
+  if (cat.status === 'built') return null;
   return <span className={`chip status-${cat.status}`}>{STATUS_LABELS[cat.status]}</span>;
 }
 
@@ -50,7 +52,9 @@ export function ItemState({ card, now }: { card: CardState | undefined; now: num
 
 /** A category's subtopics with built / target counts and its playable questions. */
 export function SubtopicList({ cat, cards, now }: { cat: Category; cards: Cards; now: number }) {
-  const items = itemsOfCategory(cat.slug);
+  // listed in the order the category is meant to be learned (the same order as "Next up")
+  const items = learningOrder(cat.slug);
+  const built = cat.status === 'built';
   return (
     <div className="stack">
       {cat.subtopics.map((t) => {
@@ -62,7 +66,7 @@ export function SubtopicList({ cat, cards, now }: { cat: Category; cards: Cards;
                 {t.name} <span className="chip">{CATEGORY_LEVELS[t.level]}</span>
               </h3>
               <span className="muted small">
-                {mine.length} of {t.target} built
+                {built ? `${mine.length} question${mine.length === 1 ? '' : 's'}` : `${mine.length} of ${t.target} built`}
               </span>
             </div>
             <p className="muted small" style={{ marginBottom: 8 }}>
@@ -79,7 +83,7 @@ export function SubtopicList({ cat, cards, now }: { cat: Category; cards: Cards;
                     <ItemState card={cards[item.id]} now={now} />
                   </Link>
                 ))}
-                {mine.length < t.target && <div className="coming-soon inline">{t.target - mine.length} more coming</div>}
+                {!built && mine.length < t.target && <div className="coming-soon inline">{t.target - mine.length} more coming</div>}
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 /**
  * Runs one question from start to finish: shows it, records the graded result
- * (spaced-repetition card + attempt log), then offers "Next".
+ * (spaced-repetition card + attempt log), then offers "Next". An optional
+ * second action (for example "Try again") sits to the left of it.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ALL_TYPE_LABELS, type Item, type ItemType } from '../content/schema';
@@ -41,6 +42,7 @@ export function ItemRunner({
   seed,
   onNext,
   nextLabel = 'Next',
+  secondary,
   onSkip,
   onResult,
 }: {
@@ -48,6 +50,8 @@ export function ItemRunner({
   seed: number;
   onNext: () => void;
   nextLabel?: string;
+  /** A second button after grading, shown to the left of the main one. */
+  secondary?: { label: string; onClick: () => void };
   onSkip?: () => void;
   onResult?: (r: RunnerResult) => void;
 }) {
@@ -148,6 +152,11 @@ export function ItemRunner({
           {!graded && onSkip && (
             <button type="button" className="btn ghost" onClick={onSkip}>
               Skip
+            </button>
+          )}
+          {graded && secondary && (
+            <button type="button" className="btn" onClick={secondary.onClick}>
+              {secondary.label}
             </button>
           )}
           {graded && (

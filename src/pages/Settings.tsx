@@ -138,8 +138,9 @@ export function Settings() {
         <div className="card">
           <h2>Back up your progress</h2>
           <p className="muted small">
-            Export saves a file with your profile, review schedule and all {attempts.toLocaleString('en-US')} logged
-            answers. Import replaces what is in this browser with the contents of that file.
+            Export saves a file with your profile, review schedule and{' '}
+            {attempts === 0 ? 'answer log (empty so far)' : attempts === 1 ? 'your 1 logged answer' : `all ${attempts.toLocaleString('en-US')} logged answers`}. Import replaces
+            what is in this browser with the contents of that file.
           </p>
           <div className="row">
             <button type="button" className="btn" onClick={downloadProgress}>
