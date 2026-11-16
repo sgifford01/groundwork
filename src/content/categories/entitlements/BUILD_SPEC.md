@@ -348,7 +348,15 @@ Used for hypothetical standards and for risk arithmetic. Label them hypothetical
 5. If sources conflict, the page will not load, or the rule is being amended, do not write the question. Note it in the log as unverified.
 6. Re-verify everything already in the log at the start of Chunk 2.
 
-**Learned in Chunk 1 (2026-11-15).** The statute pages on leginfo.legislature.ca.gov read well as text in the browser pane, and each shows the last amending statute. The CEQA Guidelines are easiest to reach on govt.westlaw.com through its "Search for a Specific Regulatory Section" form (Title 14, the section number). The City of San Diego publishes its Municipal Code as PDF files (docs.sandiego.gov/municode/...): the browser pane downloads them instead of showing them, and their tables could not be extracted as text with the tools available, so the optional "real San Diego zone" question was skipped. **Before Chunk 2, arrange a way to read those PDFs** (for example, install poppler so the files can be read page by page), because the San Diego items in `entitlements-local` must be verified against City sources.
+**Learned in Chunk 1 (2026-11-15).** The statute pages on leginfo.legislature.ca.gov read well as text in the browser pane, and each shows the last amending statute. The CEQA Guidelines are easiest to reach on govt.westlaw.com through its "Search for a Specific Regulatory Section" form (Title 14, the section number). The City of San Diego publishes its Municipal Code as PDF files (docs.sandiego.gov/municode/...): the browser pane downloads them instead of showing them, so the optional "real San Diego zone" question was skipped in Chunk 1.
+
+**How to read the City's PDFs (found after Chunk 1; no installs needed).** Fetch the PDF with WebFetch, which saves the file and reports its path, then extract its text with the PDF engine built into macOS:
+
+```bash
+osascript -l JavaScript -e "ObjC.import('PDFKit'); var d = \$.PDFDocument.alloc.initWithURL(\$.NSURL.fileURLWithPath('/path/to/file.pdf')); d.pageCount + '\n' + d.string.js" > out.txt
+```
+
+The text keeps the edition date from each page header (for example "Chapter 13: Zones (9-2026)") and the tables read row by row with their footnote numbers (Table 131-04G came through cleanly). Record the edition date in the log next to the check date, and read the footnotes before using any number from a table.
 
 **What to look up (pointers, not facts; section numbers are from memory and must themselves be confirmed):**
 
@@ -404,7 +412,7 @@ None. This category uses the existing types, including `docreview` and `judgment
 |---|---:|---|
 | Chunk 0: seeds (done) | 2 | entitlements-zoning-grid-capacity, entitlements-risk-numeric-expected-carry (both noLegalClaim) |
 | Chunk 1 (done 2026-11-15) | 19 | VERIFICATION_LOG.md with 15 rules checked at primary sources; entitlements-zoning (8 more, all hypothetical), entitlements-approvals (6: 5 verified, 1 general), entitlements-ceqa (5, all verified) |
-| Chunk 2 | 19 | Re-verify the log; first find a way to read the City of San Diego PDFs (section 11); entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built |
+| Chunk 2 | 19 | Re-verify the log (City of San Diego PDFs: read them as section 11 describes); entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built |
 | **Total** | **40** | |
 <!-- CHUNKS:END -->
 

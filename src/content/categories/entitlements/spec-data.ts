@@ -212,7 +212,7 @@ export const SPEC: SpecData = {
       title: 'Chunk 2',
       items: 19,
       scope:
-        'Re-verify the log; first find a way to read the City of San Diego PDFs (section 11); entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built',
+        'Re-verify the log (City of San Diego PDFs: read them as section 11 describes); entitlements-state-law (8), entitlements-local (6), entitlements-risk (4 more), mini-case entitlements-case (1); set status to built',
     },
   ],
 };
