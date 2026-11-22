@@ -44,6 +44,8 @@ Category questions use the same schema as the core, plus: `category` (stamped by
 
 The app is public at https://sgifford01.github.io/groundwork/ (GitHub Pages), built from the `main` branch of https://github.com/sgifford01/groundwork by `.github/workflows/deploy.yml` on every push. Pushing to `main` therefore publishes: run `npm run validate` first, and push only when the owner asks. The repository is public and the project is GPL-3.0 (`LICENSE`), as HyperFormula's GPL licence requires. Commits use the owner's private GitHub address (set in this repository's git config), never a personal email. The GitHub command-line tool is installed at `~/.local/gh/gh_2.105.0_macOS_arm64/bin/gh`, signed in as `sgifford01`. Vite builds with `base: './'`, so the site works from the `/groundwork/` subfolder.
 
+App icon: a skyline of spreadsheet cells on a ground line, the top cell yellow (the app's "fill this in" colour). The drawings live in `public/`: `icon.svg` is the full-size master, `favicon.svg` the simplified small-size version (16 to 32 px), and the sidebar mark (`BrandMark` in `src/App.tsx`) copies `favicon.svg`. The PNGs (`apple-touch-icon.png` 180 px square, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`) and `favicon.ico` were rendered from those drawings with headless Chrome; redraw them if the artwork changes. `manifest.webmanifest` lets phones and Chrome add the site to a home screen with the icon. `docs/app-icon.png` is a preview.
+
 ## Commands
 
 | Command | What it does |

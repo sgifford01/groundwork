@@ -36,6 +36,22 @@ function Icon({ d }: { d: string }) {
   );
 }
 
+/** The app icon at sidebar size: the same drawing as public/favicon.svg. */
+function BrandMark() {
+  return (
+    <svg className="brand-mark" width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="7" fill="#1f6f4a" />
+      <g fill="#ffffff">
+        <rect x="6.5" y="15" width="5" height="8.5" rx="1" />
+        <rect x="13.5" y="11" width="5" height="12.5" rx="1" />
+        <rect x="20.5" y="11" width="5" height="12.5" rx="1" />
+        <rect x="5" y="24.5" width="22" height="2.5" rx="1" />
+      </g>
+      <rect x="20.5" y="6" width="5" height="4" rx="1" fill="#f5c451" />
+    </svg>
+  );
+}
+
 const ICONS = {
   home: 'M3 11l9-8 9 8M5 10v10h14V10',
   play: 'M7 4l13 8-13 8z',
@@ -55,7 +71,7 @@ export function App() {
       <div className="app">
         <nav className="nav" aria-label="Main">
           <div className="brand">
-            <span className="brand-mark">G</span>
+            <BrandMark />
             Groundwork
           </div>
           <NavLink to="/" end>

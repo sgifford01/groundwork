@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Groundwork icon: a skyline built from spreadsheet cells on a ground line; the yellow cell is the one you fill in next -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a8a5d"/>
+      <stop offset="1" stop-color="#17573a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <g transform="translate(256 256) scale(1.14) translate(-256 -256)">
+    <g fill="#ffffff">
+      <rect x="134" y="244" width="72" height="52" rx="7"/>
+      <rect x="134" y="308" width="72" height="52" rx="7"/>
+      <rect x="220" y="180" width="72" height="52" rx="7"/>
+      <rect x="220" y="244" width="72" height="52" rx="7"/>
+      <rect x="220" y="308" width="72" height="52" rx="7"/>
+      <rect x="306" y="180" width="72" height="52" rx="7"/>
+      <rect x="306" y="244" width="72" height="52" rx="7"/>
+      <rect x="306" y="308" width="72" height="52" rx="7"/>
+      <rect x="104" y="372" width="304" height="24" rx="8"/>
+    </g>
+    <rect x="306" y="116" width="72" height="52" rx="7" fill="#f5c451"/>
+  </g>
+</svg>
