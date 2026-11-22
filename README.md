@@ -16,7 +16,7 @@ To run it on your own computer instead, see "Start the app" below. (It was first
 
 ## Start the app
 
-You need Node.js 22 or newer (already installed on Shane's Mac). Open the **Terminal** app and paste these two lines, pressing Return after each:
+You need Node.js 22 or newer to be able to run the app. Open the **Terminal** app and paste these two lines, pressing Return after each:
 
 ```bash
 cd "$HOME/Desktop/Claude App/pro-forma-gym"
