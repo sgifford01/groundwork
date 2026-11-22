@@ -40,6 +40,10 @@ Category questions use the same schema as the core, plus: `category` (stamped by
 
 **No law, fee, tax rate or market level is written from memory.** Verify at the primary source, date it and cite it, or make it an explicit hypothetical.
 
+## The public website
+
+The app is public at https://sgifford01.github.io/groundwork/ (GitHub Pages), built from the `main` branch of https://github.com/sgifford01/groundwork by `.github/workflows/deploy.yml` on every push. Pushing to `main` therefore publishes: run `npm run validate` first, and push only when the owner asks. The repository is public and the project is GPL-3.0 (`LICENSE`), as HyperFormula's GPL licence requires. Commits use the owner's private GitHub address (set in this repository's git config), never a personal email. The GitHub command-line tool is installed at `~/.local/gh/gh_2.105.0_macOS_arm64/bin/gh`, signed in as `sgifford01`. Vite builds with `base: './'`, so the site works from the `/groundwork/` subfolder.
+
 ## Commands
 
 | Command | What it does |

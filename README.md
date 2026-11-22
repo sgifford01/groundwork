@@ -1,19 +1,22 @@
 # Groundwork
 
-A practice app for real estate development. It runs on your own computer, in your web browser. Nothing is uploaded anywhere. (It was first built as "Pro Forma Gym"; the folder still has that name, and that is fine.)
+A practice app for real estate development. **Try it: https://sgifford01.github.io/groundwork/** (free, no sign-up; your progress is saved in your own browser and never uploaded).
 
-At its core is the **Excel & Pro Forma Modeling** course: short, mixed questions and spreadsheet tasks graded cell by cell, where only real formulas pass. Around it are eight more categories that are being built out one at a time.
+At its core is the **Excel & Pro Forma Modeling** course: short, mixed questions and spreadsheet tasks graded cell by cell, where only real formulas pass. Around it are eight more categories, built out one at a time.
 
 You answer short, mixed questions. Ones you miss come back within minutes; ones you know come back days later.
 
-**Core course: 204 questions · 14 question types · 6 levels plus 3 capstone case studies · a guide to 44 Excel functions.**
-**Eight more categories: specified in full, with two sample questions each ready to try (16 in all).**
+**316 questions today.** Excel & Pro Forma Modeling (204, with a guide to 44 Excel functions), Plan Reading & Building Program (70, with generated, interactive architectural drawings), Entitlements & Zoning (21 so far, every legal rule checked against an official source and dated), Commercial Leases & ARGUS (11 so far, with a lease-by-lease simulator), and two sample questions in each of the other five categories.
+
+Designed by Shane Gifford (real estate & development, UC San Diego) and built with AI coding tools (Claude Code). For learning only: nothing in it is legal, tax or investment advice. Open source under the GPL-3.0 licence (see `LICENSE`); it uses HyperFormula (GPL-3.0) to evaluate formulas.
+
+To run it on your own computer instead, see "Start the app" below. (It was first built as "Pro Forma Gym"; the folder and the browser storage key still use that name.)
 
 ---
 
 ## Start the app
 
-You need Node.js (already installed on this Mac). Open the **Terminal** app and paste these two lines, pressing Return after each:
+You need Node.js 22 or newer (already installed on Shane's Mac). Open the **Terminal** app and paste these two lines, pressing Return after each:
 
 ```bash
 cd "$HOME/Desktop/Claude App/pro-forma-gym"
@@ -285,4 +288,8 @@ Open this folder in Claude Code and ask in plain English, for example "add 15 DS
 
 ## Licence note
 
-The formula engine, HyperFormula, is used under the GPL-3.0 licence. That is fine for personal use. It only matters if you share or publish the app.
+Groundwork is published under the GPL-3.0 licence (the full text is in `LICENSE`), because the formula engine it uses, HyperFormula, is licensed to it under GPL-3.0. Anyone may use, study and share the code under the same terms.
+
+## The public website
+
+The site at https://sgifford01.github.io/groundwork/ is published by GitHub Pages from the `main` branch of https://github.com/sgifford01/groundwork. Every change pushed to `main` is rebuilt and republished automatically (`.github/workflows/deploy.yml`); the Actions tab on GitHub shows each run. Visitors' progress is stored in their own browser, so nothing personal is collected.

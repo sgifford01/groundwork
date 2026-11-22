@@ -80,7 +80,11 @@ export function App() {
           <NavLink to="/settings">
             <Icon d={ICONS.gear} /> Settings
           </NavLink>
-          <div className="nav-foot">{EVERY_ITEM.length} questions · saved on this computer</div>
+          <div className="nav-foot">
+            {EVERY_ITEM.length} questions · saved on this computer
+            <br />
+            For learning only: not legal, tax or investment advice.
+          </div>
         </nav>
         <main className="main">
           <Routes>

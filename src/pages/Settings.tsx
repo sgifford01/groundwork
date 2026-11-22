@@ -182,8 +182,12 @@ export function Settings() {
         </div>
 
         <p className="muted small">
-          Groundwork uses HyperFormula (GPL-3.0) to evaluate formulas. That is fine for personal use; it only
-          matters if you distribute the app.
+          Groundwork is for learning only: nothing in it is legal, tax or investment advice. It is open source under the
+          GPL-3.0 licence (it uses HyperFormula, GPL-3.0, to evaluate formulas):{' '}
+          <a href="https://github.com/sgifford01/groundwork" target="_blank" rel="noreferrer">
+            source code on GitHub
+          </a>
+          .
         </p>
       </div>
     </div>
