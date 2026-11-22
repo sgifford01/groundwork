@@ -213,7 +213,10 @@ export function Welcome() {
           Short, mixed practice sessions for real estate development, with Excel and pro forma modeling at the core.
           Questions you miss come back soon; questions you know space out.
         </p>
-        <p className="small muted">These are the answers you gave during setup. Change anything that is off.</p>
+        <p className="small muted">
+          Tell it about your setup so the keyboard shortcuts and functions match yours. You can change these later in
+          Settings. Your progress stays in this browser; there is no account.
+        </p>
         <ProfileFields value={draft} onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} />
         <div className="hints" style={{ marginTop: 16 }}>
           <strong>In every spreadsheet task</strong>
